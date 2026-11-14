@@ -27,5 +27,10 @@
     },
     "train_total_s": 884.2,
     "train_total_cpu_s": 4079.8
+  },
+  "eval": {
+    "holdout_requests": 31725,
+    "wall_s": 187.0,
+    "requests_per_s": 169.7
   }
 }

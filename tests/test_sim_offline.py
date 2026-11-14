@@ -72,7 +72,7 @@ def test_offline_with_stub_lab(scenario: Scenario, monkeypatch: pytest.MonkeyPat
     assert all(result.accounts[a]["first_block_time"] is None for a in solo)
     times = [r["sim_time"] for r in result.requests]
     assert times == sorted(times)
-    assert worker.rescores == len(result.requests) // CFG["watchdog"]["offline_rescore_every"] + 1
+    assert worker.rescores == len(result.requests) // CFG["watchdog"]["offline_rescore_every"] + 2  # + final rescore before and after campaigns
     assert result.counters["hydra"]["blocked"] > 0
     assert all("x_replay" in r.body for r in scenario.requests)   # the lab got a copy of each body
 

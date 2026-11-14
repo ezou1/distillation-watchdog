@@ -1,0 +1,451 @@
+{
+  "scaffold_denylist": {
+    "forbidden_strings": 14,
+    "files": {
+      "canonical/openswe.jsonl": {
+        "records": 12000,
+        "dirty_records": 0,
+        "hits": {}
+      },
+      "canonical/openswe_xharness.jsonl": {
+        "records": 800,
+        "dirty_records": 0,
+        "hits": {}
+      },
+      "canonical/swechat.jsonl": {
+        "records": 11537,
+        "dirty_records": 0,
+        "hits": {}
+      },
+      "splits/holdout.jsonl": {
+        "records": 4094,
+        "dirty_records": 0,
+        "hits": {}
+      },
+      "splits/train.jsonl": {
+        "records": 13702,
+        "dirty_records": 0,
+        "hits": {}
+      },
+      "splits/val.jsonl": {
+        "records": 3947,
+        "dirty_records": 0,
+        "hits": {}
+      },
+      "splits/xharness.jsonl": {
+        "records": 149,
+        "dirty_records": 0,
+        "hits": {}
+      }
+    },
+    "dirty_records_total": 0,
+    "pass": true,
+    "note": "Expected 0 dirty records."
+  },
+  "format_probe": {
+    "auc_holdout": 0.999292847304211,
+    "target_below": 0.7,
+    "pass": false,
+    "n_train": 5000,
+    "n_holdout": 4094,
+    "n_features": 74,
+    "top_features": [
+      {
+        "name": "user_md_heading",
+        "coef": 3.2388
+      },
+      {
+        "name": "user_blank_runs",
+        "coef": -1.9103
+      },
+      {
+        "name": "user_inline_code",
+        "coef": 1.7504
+      },
+      {
+        "name": "user_count_log",
+        "coef": -1.5467
+      },
+      {
+        "name": "tool_count_log",
+        "coef": 1.3862
+      },
+      {
+        "name": "user_char_punct",
+        "coef": -1.2443
+      },
+      {
+        "name": "tool_path_home",
+        "coef": -1.1972
+      },
+      {
+        "name": "tool_lead_space_lines",
+        "coef": -1.157
+      },
+      {
+        "name": "tool_char_lower",
+        "coef": -0.9058
+      },
+      {
+        "name": "tool_len_lt_100",
+        "coef": -0.8968
+      },
+      {
+        "name": "user_md_bold",
+        "coef": 0.8466
+      },
+      {
+        "name": "tool_char_non_ascii",
+        "coef": -0.835
+      }
+    ],
+    "note": "Fit on train, AUC on holdout. Label 1 = openswe. Formatting features of user and tool-result text only."
+  },
+  "assistant_prose_probe": {
+    "auc_holdout": 0.9991107093663911,
+    "n_train": 5000,
+    "n_holdout": 4094,
+    "note": "TF-IDF word 1-2 grams on assistant prose. A high AUC shows why detectors do not read assistant prose."
+  },
+  "cross_harness": {
+    "normal": {
+      "fake_env": {
+        "accounts": 47,
+        "recall_block": 1.0,
+        "share_review_only": 0.0,
+        "worker_state_block": null,
+        "worker_state_review": null
+      },
+      "hydra": {
+        "accounts": 200,
+        "recall_block": 1.0,
+        "share_review_only": 0.0,
+        "worker_state_block": null,
+        "worker_state_review": null
+      },
+      "stealth": {
+        "accounts": 40,
+        "recall_block": 0.825,
+        "share_review_only": 0.1,
+        "worker_state_block": null,
+        "worker_state_review": null
+      }
+    },
+    "xharness": {
+      "fake_env": {
+        "accounts": 47,
+        "recall_block": 1.0,
+        "share_review_only": 0.0,
+        "worker_state_block": 1.0,
+        "worker_state_review": 0.0
+      },
+      "hydra": {
+        "accounts": 82,
+        "recall_block": 1.0,
+        "share_review_only": 0.0,
+        "worker_state_block": 1.0,
+        "worker_state_review": 0.0
+      },
+      "stealth": {
+        "accounts": 40,
+        "recall_block": 0.85,
+        "share_review_only": 0.1,
+        "worker_state_block": 0.85,
+        "worker_state_review": 0.1
+      }
+    },
+    "holdout_auc": {
+      "normal": 0.9959043951341768,
+      "xharness": 0.9944980795183225
+    },
+    "thresholds": {
+      "block": 0.308899445223958,
+      "review": 0.11916511720012386
+    },
+    "note": "Saved model and validation thresholds. In 'xharness' the hydra persona replays the sweagent slice. recall_block uses the account score only; worker_state_* include campaign propagation."
+  },
+  "label_permutation": {
+    "runs": 20,
+    "holdout_aucs": [
+      0.6856,
+      0.7532,
+      0.0932,
+      0.306,
+      0.4319,
+      0.6625,
+      0.04,
+      0.3479,
+      0.241,
+      0.2753,
+      0.5009,
+      0.2755,
+      0.1322,
+      0.1415,
+      0.9391,
+      0.3204,
+      0.2126,
+      0.2883,
+      0.3225,
+      0.3728
+    ],
+    "mean_auc": 0.3671,
+    "std_auc": 0.2287,
+    "true_label_auc": 0.9959,
+    "p_value": 0.0476,
+    "note": "Account model retrained on train tables with shuffled labels; AUC on the holdout table. One shuffle gives a random weight direction, so one run can be far from 0.5 when the features separate the classes. With unequal classes, outlier accounts get the majority label more often, which can move the mean away from 0.5 in either direction. p_value = share of shuffled runs with AUC >= the true-label AUC."
+  },
+  "feature_ablation": {
+    "variants": {
+      "all": {
+        "n_features": 34,
+        "holdout_auc": 0.9959,
+        "block_threshold": 0.3089,
+        "holdout_recall_at_block": 0.9756,
+        "holdout_fpr_at_block": 0.0
+      },
+      "spec_real_data (B10 6a)": {
+        "n_features": 18,
+        "holdout_auc": 0.9309,
+        "block_threshold": 0.3871,
+        "holdout_recall_at_block": 0.5122,
+        "holdout_fpr_at_block": 0.0351
+      },
+      "strict_real_data": {
+        "n_features": 11,
+        "holdout_auc": 0.7897,
+        "block_threshold": 0.6829,
+        "holdout_recall_at_block": 0.0105,
+        "holdout_fpr_at_block": 0.0351
+      },
+      "simulator_only": {
+        "n_features": 14,
+        "holdout_auc": 1.0,
+        "block_threshold": 0.0361,
+        "holdout_recall_at_block": 1.0,
+        "holdout_fpr_at_block": 0.0526
+      },
+      "drop_d1": {
+        "n_features": 28,
+        "holdout_auc": 0.9815,
+        "block_threshold": 0.6962,
+        "holdout_recall_at_block": 0.7526,
+        "holdout_fpr_at_block": 0.0
+      },
+      "drop_d2": {
+        "n_features": 29,
+        "holdout_auc": 0.9966,
+        "block_threshold": 0.092,
+        "holdout_recall_at_block": 0.9965,
+        "holdout_fpr_at_block": 0.0351
+      },
+      "drop_d3": {
+        "n_features": 30,
+        "holdout_auc": 0.9979,
+        "block_threshold": 0.5541,
+        "holdout_recall_at_block": 0.9303,
+        "holdout_fpr_at_block": 0.0175
+      },
+      "drop_d4": {
+        "n_features": 27,
+        "holdout_auc": 0.9948,
+        "block_threshold": 0.0607,
+        "holdout_recall_at_block": 0.9895,
+        "holdout_fpr_at_block": 0.0351
+      },
+      "drop_d5": {
+        "n_features": 31,
+        "holdout_auc": 0.9956,
+        "block_threshold": 0.1703,
+        "holdout_recall_at_block": 0.9826,
+        "holdout_fpr_at_block": 0.0526
+      },
+      "drop_d6": {
+        "n_features": 31,
+        "holdout_auc": 0.9939,
+        "block_threshold": 0.5795,
+        "holdout_recall_at_block": 0.892,
+        "holdout_fpr_at_block": 0.0
+      },
+      "drop_d7": {
+        "n_features": 28,
+        "holdout_auc": 0.9966,
+        "block_threshold": 0.328,
+        "holdout_recall_at_block": 0.9721,
+        "holdout_fpr_at_block": 0.0
+      }
+    },
+    "feature_origin": {
+      "d1_branch_factor": {
+        "origin": "real_data",
+        "spec_real_data": true,
+        "why": "different children of one prefix come from real repeated attempts"
+      },
+      "d1_branch_frac": {
+        "origin": "real_data",
+        "spec_real_data": true,
+        "why": "different children of one prefix come from real repeated attempts"
+      },
+      "d1_cross_account_dup_rate": {
+        "origin": "real_data",
+        "spec_real_data": true,
+        "why": "identical prefixes of real attempts of one task on other accounts"
+      },
+      "d1_dup_rate": {
+        "origin": "simulator",
+        "spec_real_data": false,
+        "why": "best-of-n copies are a persona parameter"
+      },
+      "d1_hot_dup_rate": {
+        "origin": "simulator",
+        "spec_real_data": false,
+        "why": "best-of-n copies at the persona temperature"
+      },
+      "d1_max_dup": {
+        "origin": "simulator",
+        "spec_real_data": false,
+        "why": "best-of-n copies are a persona parameter"
+      },
+      "d2_correction_rate": {
+        "origin": "real_data",
+        "spec_real_data": true,
+        "why": "correction phrases in real user text"
+      },
+      "d2_followup_rate": {
+        "origin": "real_data",
+        "spec_real_data": true,
+        "why": "real follow-ups; stealth adds LLM-written follow-ups"
+      },
+      "d2_return_rate": {
+        "origin": "simulator",
+        "spec_real_data": true,
+        "why": "session start days come from the scheduler (fit on real gaps)"
+      },
+      "d2_stop_end_frac": {
+        "origin": "real_data",
+        "spec_real_data": true,
+        "why": "real sessions that end at the model stop"
+      },
+      "d2_user_turns_per_session": {
+        "origin": "real_data",
+        "spec_real_data": true,
+        "why": "user turns of the real sessions"
+      },
+      "d3_distinct_repos": {
+        "origin": "real_data",
+        "spec_real_data": true,
+        "why": "repositories of the real sessions"
+      },
+      "d3_repo_entropy": {
+        "origin": "real_data",
+        "spec_real_data": true,
+        "why": "repositories of the real sessions"
+      },
+      "d3_sessions_per_repo": {
+        "origin": "real_data",
+        "spec_real_data": true,
+        "why": "repositories of the real sessions"
+      },
+      "d3_topic_entropy": {
+        "origin": "real_data",
+        "spec_real_data": true,
+        "why": "topics of the real first prompts"
+      },
+      "d4_elicit_frac": {
+        "origin": "synthetic_text",
+        "spec_real_data": false,
+        "why": "elicitation phrases come from the LLM-written banks"
+      },
+      "d4_elicit_max": {
+        "origin": "synthetic_text",
+        "spec_real_data": false,
+        "why": "elicitation phrases come from the LLM-written banks"
+      },
+      "d4_elicit_mean": {
+        "origin": "synthetic_text",
+        "spec_real_data": false,
+        "why": "elicitation phrases come from the LLM-written banks"
+      },
+      "d4_max_effort_frac": {
+        "origin": "simulator",
+        "spec_real_data": false,
+        "why": "reasoning_effort is a persona parameter"
+      },
+      "d4_max_tokens_frac": {
+        "origin": "simulator",
+        "spec_real_data": false,
+        "why": "max_tokens is a persona parameter"
+      },
+      "d4_mean_temp": {
+        "origin": "simulator",
+        "spec_real_data": false,
+        "why": "temperature is a persona parameter"
+      },
+      "d4_n_gt1_rate": {
+        "origin": "simulator",
+        "spec_real_data": false,
+        "why": "n is a persona parameter"
+      },
+      "d5_skeletons_per_session": {
+        "origin": "synthetic_text",
+        "spec_real_data": true,
+        "why": "attacker templates are written assets; normal prompts are real"
+      },
+      "d5_template_mass": {
+        "origin": "synthetic_text",
+        "spec_real_data": true,
+        "why": "attacker templates are written assets; normal prompts are real"
+      },
+      "d5_top_skeleton_frac": {
+        "origin": "synthetic_text",
+        "spec_real_data": true,
+        "why": "attacker templates are written assets; normal prompts are real"
+      },
+      "d6_contradiction_session_frac": {
+        "origin": "synthetic_text",
+        "spec_real_data": true,
+        "why": "fake-env tool outputs are LLM-written; others are real"
+      },
+      "d6_contradictions_per_100": {
+        "origin": "synthetic_text",
+        "spec_real_data": true,
+        "why": "fake-env tool outputs are LLM-written; others are real"
+      },
+      "d6_fake_prob_mean": {
+        "origin": "synthetic_text",
+        "spec_real_data": true,
+        "why": "fake-env tool outputs are LLM-written; others are real"
+      },
+      "d7_active_hours_per_day": {
+        "origin": "simulator",
+        "spec_real_data": false,
+        "why": "timing and volume come from the scheduler"
+      },
+      "d7_distinct_users": {
+        "origin": "simulator",
+        "spec_real_data": false,
+        "why": "the user field is a persona parameter"
+      },
+      "d7_max_concurrent_sessions": {
+        "origin": "simulator",
+        "spec_real_data": false,
+        "why": "timing and volume come from the scheduler"
+      },
+      "d7_mean_concurrent_sessions": {
+        "origin": "simulator",
+        "spec_real_data": false,
+        "why": "timing and volume come from the scheduler"
+      },
+      "d7_req_per_active_hour": {
+        "origin": "simulator",
+        "spec_real_data": false,
+        "why": "timing and volume come from the scheduler"
+      },
+      "d7_user_field_frac": {
+        "origin": "simulator",
+        "spec_real_data": false,
+        "why": "the user field is a persona parameter"
+      }
+    },
+    "note": "Retrained on train tables, thresholds on validation, metrics on holdout. real_data = real session structure; synthetic_text = LLM or hand-written assets; simulator = persona parameters, timing, and volume."
+  }
+}
