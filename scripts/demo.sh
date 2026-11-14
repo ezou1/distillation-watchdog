@@ -6,6 +6,12 @@ cd "$(dirname "$0")/.."
 PY=.venv/bin/python
 SCALE="${SCALE:-demo}"
 mkdir -p logs agent_workspace
+# A small venv with pytest for the agent shell. It is separate from .venv (the agent can run pip in it).
+UV=$(command -v uv || echo "$HOME/.local/bin/uv")
+if [ ! -x cache/agent_venv/bin/python ]; then
+  { "$UV" venv -q cache/agent_venv --python 3.12 && "$UV" pip install -q --python cache/agent_venv/bin/python pytest; } \
+    || echo "WARNING: no agent venv. The agent shell has no python with pytest."
+fi
 
 CMDS=(
   "lab|$PY -m dw.lab.gateway"

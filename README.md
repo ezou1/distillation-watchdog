@@ -55,7 +55,7 @@ The detectors:
 | SWE-chat (`SALT-NLP/SWE-chat`, gated) | ODC-BY | Real coding-agent sessions of open-source developers. Normal personas, stealth persona. Timing fit. |
 | Open-SWE-Traces (`nvidia/Open-SWE-Traces`) | CC BY 4.0 | Agent trajectories by NVIDIA. Attack personas, benchmark persona. The `sweagent` split is the cross-harness control. |
 
-Attribution: Open-SWE-Traces is made by NVIDIA and is used under the CC BY 4.0 licence.
+Attribution: NVIDIA made Open-SWE-Traces. This project uses it under the CC BY 4.0 licence.
 
 Data rules:
 
@@ -86,7 +86,7 @@ The system runs on Linux (tested on WSL with Ubuntu 24.04). It needs Python 3.12
 
 CAUTION: Do not commit `.env`. The agent shell does not get these variables.
 
-The build uses no `:free` model routes on OpenRouter. All LLM calls are cached in `cache/llm/`. The tests do not call OpenRouter.
+The build uses no `:free` model routes on OpenRouter. The build keeps all LLM calls in a cache in `cache/llm/`. The tests do not call OpenRouter.
 
 ## Run
 
@@ -100,8 +100,8 @@ The build uses no `:free` model routes on OpenRouter. All LLM calls are cached i
 2. Open the dashboard at `http://127.0.0.1:8010`. Open the agent chat at `http://127.0.0.1:8003`.
 3. In the normal generator pane (or at `http://127.0.0.1:8001`), start Solo developers, SaaS app, and Benchmark runner. The dashboard stays mostly green. SaaS and Benchmark show some flags but no blocks.
 4. In the agent chat, ask the agent to write a small function and its test in the sandbox. Approve the test run. The "you" account stays normal on the dashboard.
-5. In the attack generator pane (or at `http://127.0.0.1:8002`), start Hydra. The account scores increase. A campaign forms in the graph. Blocks start. The attack pane shows 403 responses, and the leaked-trajectory count stops.
-6. Start Stealth. Most stealth accounts stay below the account threshold. The campaign link catches them.
+5. In the attack generator pane (or at `http://127.0.0.1:8002`), start Hydra. The account scores increase. A campaign forms in the graph. Blocks start. The attack pane shows 403 responses, and the leaked-trajectory count stops for the blocked accounts. At the demo speed, the Hydra scenario ends in a short time.
+6. Start Stealth. Most stealth accounts stay below the account threshold. The account score blocks some of them. The campaign link does not catch the others (see "Limits").
 7. Open one evidence item: for example, a duplicate state sent 8 times, or a contradiction in the shadow file system.
 8. Click "Generate case file". Each claim in the case file cites evidence.
 9. Open the Evaluation tab: per-request versus per-account, leakage controls, and compute cost.
@@ -111,11 +111,117 @@ The build uses no `:free` model routes on OpenRouter. All LLM calls are cached i
 All numbers in this section come from `reports/`. `python -m dw.eval.readme` writes this section again from the reports.
 
 <!-- RESULTS:START -->
+Holdout scenario: 50,767 requests, 352 accounts, 343 accounts with enough requests to score (scale `full`, seed 301).
+
+### Per-request versus per-account
+
+| Measure | Value |
+|---|---|
+| Per-request model AUC | 0.909 |
+| Per-request threshold (from validation) | 0.629 |
+| Per-request false positive rate at this threshold | 0.097 |
+| Per-request recall at this threshold | 0.775 |
+| False request flags per day at 10,000,000 requests | 973,937 |
+| Account model AUC | 0.957 |
+| Normal accounts in the holdout | 57 |
+| Falsely blocked normal accounts | 2 |
+| Attack accounts blocked (share) | 0.892 |
+
+![Per-request versus per-account](reports/per_request_vs_account.png)
+
+### Accounts per persona
+
+"Account level" uses only the account score. "Final" includes the campaign propagation.
+
+| Persona | Accounts | Blocked (account level) | Blocked (final) | Review or block (final) |
+|---|---|---|---|---|
+| Solo developer | 53 | 2 | 2 | 4 |
+| SaaS app | 1 | 0 | 0 | 0 |
+| Benchmark runner | 3 | 0 | 0 | 0 |
+| Hydra | 200 | 138 | 200 | 200 |
+| Fake environment | 47 | 31 | 47 | 47 |
+| Stealth | 39 | 8 | 8 | 11 |
+
+![ROC and precision-recall](reports/roc_pr.png)
+
+### Time to block and leakage
+
+| Persona | Accounts | Blocked | Median requests to block | Median simulated minutes to block |
+|---|---|---|---|---|
+| Hydra | 200 | 200 | 73 | 2.800 |
+| Fake environment | 48 | 47 | 38 | 2.100 |
+| Stealth | 40 | 8 | 58 | 193.3 |
+
+| Persona | Complete trajectories served | Complete trajectories tried |
+|---|---|---|
+| Benchmark runner | 89 | 89 |
+| Fake environment | 29 | 29 |
+| Hydra | 284 | 286 |
+| SaaS app | 74 | 74 |
+| Solo developer | 86 | 86 |
+| Stealth | 97 | 99 |
+
+Campaign effect on stealth: account-level recall 0.205, recall after campaigns 0.205, 2 campaigns found.
+
+### D4 elicitation on bank B (phrases not seen in training)
+
+| Model | Precision | Recall | False positive rate |
+|---|---|---|---|
+| Classifier | 0.851 | 0.696 | 0.122 |
+| Keyword baseline | 0.553 | 0.296 | 0.239 |
+
+### D6 environment
+
+| Group | Contradictions per 100 tool results | Sessions with a contradiction | Mean realism score |
+|---|---|---|---|
+| Fake-environment accounts | 0.146 | 0.032 | 0.452 |
+| Other accounts | 0.058 | 0.009 | 0.316 |
+
+The realism classifier flags 0.046 of 3,000 real SWE-chat tool outputs in the holdout.
+
+### Compute
+
+| Measure | Value |
+|---|---|
+| Training, wall time (s) | 432.2 |
+| Training, CPU time (s) | 1,685.5 |
+| Evaluation, wall time (s) | 97.100 |
+| Evaluation, requests per second | 522.6 |
+| Lab gateway load test, requests per second | 709.9 |
+| Lab gateway `handle()` p95 (ms) | 0.841 |
+| OpenRouter cost, total (USD) | 2.358 |
 <!-- RESULTS:END -->
 
 ## Leakage controls
 
 <!-- CONTROLS:START -->
+| Control | Result | Target | Status |
+|---|---|---|---|
+| 1. Scaffold denylist | 0 dirty records | 0 | pass |
+| 2. Format probe (source from formatting) | AUC 0.999 | below 0.7 | fail |
+| 3. Assistant-prose probe (source from prose) | AUC 0.999 | high (expected) | info |
+| 4. Cross-harness (hydra on SWE-agent data) | hydra recall 0.690 (normal), 0.561 (other harness) | same recall | fail |
+| 5. Label permutation | mean AUC 0.462 (std 0.265), p = 0.048 | near 0.5 | see note |
+
+6. Feature-family ablation (fit on train, thresholds on validation, results on holdout):
+
+| Feature set | Features | Holdout AUC | Recall at block | False positive rate at block |
+|---|---|---|---|---|
+| all | 34 | 0.957 | 0.619 | 0.035 |
+| spec_real_data (B10 6a) | 18 | 0.923 | 0.420 | 0.035 |
+| strict_real_data | 11 | 0.801 | 0.297 | 0.053 |
+| simulator_only | 14 | 0.954 | 0.832 | 0.000 |
+| drop_d1 | 28 | 0.950 | 0.350 | 0.035 |
+| drop_d2 | 29 | 0.958 | 0.759 | 0.088 |
+| drop_d3 | 30 | 0.962 | 0.601 | 0.000 |
+| drop_d4 | 27 | 0.956 | 0.836 | 0.035 |
+| drop_d5 | 31 | 0.957 | 0.892 | 0.035 |
+| drop_d6 | 31 | 0.917 | 0.266 | 0.000 |
+| drop_d7 | 28 | 0.958 | 0.640 | 0.035 |
+
+![Ablation](reports/controls_ablation.png)
+
+Largest format-probe features: `user_md_heading`, `user_blank_runs`, `user_inline_code`, `user_count_log`, `tool_count_log`, `user_char_punct`.
 <!-- CONTROLS:END -->
 
 ## Which signals are real and which are simulated
@@ -138,7 +244,14 @@ The feature-family ablation in "Leakage controls" shows the result with and with
 - SWE-chat users are open-source developers who agreed to share their sessions. They do not represent all users.
 - The two data sources come from different agent harnesses. The benchmark persona (normal) and the stealth persona (attack) mix the sources, and the controls measure the remaining source signal.
 - A shell command in the agent chat can read files outside `agent_workspace/` (for example `../.env`). Only the approval click prevents this.
-- The simulation clock runs 600 times faster than real time. A real deployment uses server time.
+- The simulation clock runs faster than real time (`sim.speed` in `config.yaml`). A real deployment uses server time.
+- Training time: BUILD.md B9 sets a limit of 10 CPU minutes. Training does not meet this limit. The "Compute" table in "Results" shows the CPU time. The scenario replays through the full worker and the text embeddings use most of the time.
+- Format probe (control 2) fails. Formatting features predict the data source. The largest features are markdown in user text and the session shape (number of user turns and tool results). Open-SWE prompts are GitHub issue texts, and SWE-chat prompts are chat messages. More scaffold stripping cannot remove this difference.
+- Path strings (for example `/home/` and `/workspace`) and the name of the agent harness in the text also show the source. A fix needs a new data build.
+- Cross-harness control (control 4) fails. Hydra recall on SWE-agent data is lower than on the main data.
+- In the holdout, the campaign propagation does not increase the stealth recall. Most stealth accounts stay below the block threshold.
+- The training scenarios use a light stealth persona with one user turn per session. Thus the engagement features (D2) have a large weight. The holdout stealth persona adds follow-up turns.
+- The holdout has few normal accounts. Thus one falsely blocked account changes the false positive rate by a large step.
 
 ## Future work
 

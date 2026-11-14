@@ -37,7 +37,7 @@ class Persona:
     temperature: Range
     max_tokens: Range
     best_of_n: Range = (1, 1)
-    retry_rate: float = 0.0         # chance that one request is sent one more time (retry, regenerate)
+    retry_rate: Range = (0.0, 0.0)  # per account: chance that one request is sent one more time (retry, regenerate)
     effort_rate: float = 0.0        # chance that an account sends reasoning_effort = "high"
     cap_rate: float = 0.0           # chance that an account sets max_tokens to the cap
     elicit_rate: float = 0.0
@@ -75,7 +75,7 @@ def _attack(name: str, data: str, c: dict[str, Any]) -> Persona:
 
 def _params(c: dict[str, Any]) -> dict[str, float]:
     """Request-parameter rates of one persona. Every persona has the same three rates (overlapping values)."""
-    return {"retry_rate": float(c.get("retry_rate", 0.0)), "effort_rate": float(c.get("effort_rate", 0.0)),
+    return {"retry_rate": _rng(c.get("retry_rate", 0.0)), "effort_rate": float(c.get("effort_rate", 0.0)),
             "cap_rate": float(c.get("cap_rate", 0.0))}
 
 
@@ -137,8 +137,10 @@ def randomize(persona: Persona, rng: random.Random, frac: float) -> Persona:
                for f in fields(persona) if f.name in _RANDOMIZED and getattr(persona, f.name) is not None}
     lo, hi = changes["temperature"]
     changes["temperature"] = (max(0.0, lo), min(2.0, hi))
-    for key in ("elicit_rate", "benign_rate", "retry_rate", "effort_rate", "cap_rate"):
+    for key in ("elicit_rate", "benign_rate", "effort_rate", "cap_rate"):
         changes[key] = min(1.0, changes[key])
+    lo, hi = changes["retry_rate"]
+    changes["retry_rate"] = (min(1.0, lo), min(1.0, hi))
     return replace(persona, **changes)
 
 

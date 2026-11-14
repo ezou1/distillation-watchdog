@@ -111,22 +111,22 @@
     "normal": {
       "fake_env": {
         "accounts": 47,
-        "recall_block": 1.0,
-        "share_review_only": 0.0,
+        "recall_block": 0.6596,
+        "share_review_only": 0.3404,
         "worker_state_block": null,
         "worker_state_review": null
       },
       "hydra": {
         "accounts": 200,
-        "recall_block": 1.0,
-        "share_review_only": 0.0,
+        "recall_block": 0.69,
+        "share_review_only": 0.31,
         "worker_state_block": null,
         "worker_state_review": null
       },
       "stealth": {
-        "accounts": 40,
-        "recall_block": 0.825,
-        "share_review_only": 0.1,
+        "accounts": 39,
+        "recall_block": 0.2051,
+        "share_review_only": 0.0769,
         "worker_state_block": null,
         "worker_state_review": null
       }
@@ -134,63 +134,63 @@
     "xharness": {
       "fake_env": {
         "accounts": 47,
-        "recall_block": 1.0,
-        "share_review_only": 0.0,
+        "recall_block": 0.6383,
+        "share_review_only": 0.3617,
         "worker_state_block": 1.0,
         "worker_state_review": 0.0
       },
       "hydra": {
         "accounts": 82,
-        "recall_block": 1.0,
-        "share_review_only": 0.0,
-        "worker_state_block": 1.0,
-        "worker_state_review": 0.0
+        "recall_block": 0.561,
+        "share_review_only": 0.4024,
+        "worker_state_block": 0.8293,
+        "worker_state_review": 0.1341
       },
       "stealth": {
-        "accounts": 40,
-        "recall_block": 0.85,
-        "share_review_only": 0.1,
-        "worker_state_block": 0.85,
-        "worker_state_review": 0.1
+        "accounts": 39,
+        "recall_block": 0.2821,
+        "share_review_only": 0.0769,
+        "worker_state_block": 0.2821,
+        "worker_state_review": 0.0769
       }
     },
     "holdout_auc": {
-      "normal": 0.9959043951341768,
-      "xharness": 0.9944980795183225
+      "normal": 0.9568764568764568,
+      "xharness": 0.9456975772765247
     },
     "thresholds": {
-      "block": 0.308899445223958,
-      "review": 0.11916511720012386
+      "block": 0.5550200728412171,
+      "review": 0.08873972362278004
     },
     "note": "Saved model and validation thresholds. In 'xharness' the hydra persona replays the sweagent slice. recall_block uses the account score only; worker_state_* include campaign propagation."
   },
   "label_permutation": {
     "runs": 20,
     "holdout_aucs": [
-      0.6856,
-      0.7532,
-      0.0932,
-      0.306,
-      0.4319,
-      0.6625,
-      0.04,
-      0.3479,
-      0.241,
-      0.2753,
-      0.5009,
-      0.2755,
-      0.1322,
-      0.1415,
-      0.9391,
-      0.3204,
-      0.2126,
-      0.2883,
-      0.3225,
-      0.3728
+      0.8124,
+      0.4699,
+      0.3263,
+      0.255,
+      0.1966,
+      0.709,
+      0.3902,
+      0.2616,
+      0.2384,
+      0.1508,
+      0.1034,
+      0.8439,
+      0.7998,
+      0.2088,
+      0.6845,
+      0.6986,
+      0.8503,
+      0.2241,
+      0.7598,
+      0.2572
     ],
-    "mean_auc": 0.3671,
-    "std_auc": 0.2287,
-    "true_label_auc": 0.9959,
+    "mean_auc": 0.462,
+    "std_auc": 0.2649,
+    "true_label_auc": 0.9569,
     "p_value": 0.0476,
     "note": "Account model retrained on train tables with shuffled labels; AUC on the holdout table. One shuffle gives a random weight direction, so one run can be far from 0.5 when the features separate the classes. With unequal classes, outlier accounts get the majority label more often, which can move the mean away from 0.5 in either direction. p_value = share of shuffled runs with AUC >= the true-label AUC."
   },
@@ -198,80 +198,80 @@
     "variants": {
       "all": {
         "n_features": 34,
-        "holdout_auc": 0.9959,
-        "block_threshold": 0.3089,
-        "holdout_recall_at_block": 0.9756,
-        "holdout_fpr_at_block": 0.0
+        "holdout_auc": 0.9569,
+        "block_threshold": 0.555,
+        "holdout_recall_at_block": 0.6189,
+        "holdout_fpr_at_block": 0.0351
       },
       "spec_real_data (B10 6a)": {
         "n_features": 18,
-        "holdout_auc": 0.9309,
-        "block_threshold": 0.3871,
-        "holdout_recall_at_block": 0.5122,
+        "holdout_auc": 0.9228,
+        "block_threshold": 0.4937,
+        "holdout_recall_at_block": 0.4196,
         "holdout_fpr_at_block": 0.0351
       },
       "strict_real_data": {
         "n_features": 11,
-        "holdout_auc": 0.7897,
-        "block_threshold": 0.6829,
-        "holdout_recall_at_block": 0.0105,
-        "holdout_fpr_at_block": 0.0351
+        "holdout_auc": 0.8009,
+        "block_threshold": 0.5316,
+        "holdout_recall_at_block": 0.2972,
+        "holdout_fpr_at_block": 0.0526
       },
       "simulator_only": {
         "n_features": 14,
-        "holdout_auc": 1.0,
-        "block_threshold": 0.0361,
-        "holdout_recall_at_block": 1.0,
-        "holdout_fpr_at_block": 0.0526
+        "holdout_auc": 0.9535,
+        "block_threshold": 0.6209,
+        "holdout_recall_at_block": 0.8322,
+        "holdout_fpr_at_block": 0.0
       },
       "drop_d1": {
         "n_features": 28,
-        "holdout_auc": 0.9815,
-        "block_threshold": 0.6962,
-        "holdout_recall_at_block": 0.7526,
-        "holdout_fpr_at_block": 0.0
+        "holdout_auc": 0.9499,
+        "block_threshold": 0.6734,
+        "holdout_recall_at_block": 0.3497,
+        "holdout_fpr_at_block": 0.0351
       },
       "drop_d2": {
         "n_features": 29,
-        "holdout_auc": 0.9966,
-        "block_threshold": 0.092,
-        "holdout_recall_at_block": 0.9965,
-        "holdout_fpr_at_block": 0.0351
+        "holdout_auc": 0.9576,
+        "block_threshold": 0.318,
+        "holdout_recall_at_block": 0.7587,
+        "holdout_fpr_at_block": 0.0877
       },
       "drop_d3": {
         "n_features": 30,
-        "holdout_auc": 0.9979,
-        "block_threshold": 0.5541,
-        "holdout_recall_at_block": 0.9303,
-        "holdout_fpr_at_block": 0.0175
+        "holdout_auc": 0.9622,
+        "block_threshold": 0.9594,
+        "holdout_recall_at_block": 0.6014,
+        "holdout_fpr_at_block": 0.0
       },
       "drop_d4": {
         "n_features": 27,
-        "holdout_auc": 0.9948,
-        "block_threshold": 0.0607,
-        "holdout_recall_at_block": 0.9895,
+        "holdout_auc": 0.9555,
+        "block_threshold": 0.2853,
+        "holdout_recall_at_block": 0.8357,
         "holdout_fpr_at_block": 0.0351
       },
       "drop_d5": {
         "n_features": 31,
-        "holdout_auc": 0.9956,
-        "block_threshold": 0.1703,
-        "holdout_recall_at_block": 0.9826,
-        "holdout_fpr_at_block": 0.0526
+        "holdout_auc": 0.9572,
+        "block_threshold": 0.3132,
+        "holdout_recall_at_block": 0.8916,
+        "holdout_fpr_at_block": 0.0351
       },
       "drop_d6": {
         "n_features": 31,
-        "holdout_auc": 0.9939,
-        "block_threshold": 0.5795,
-        "holdout_recall_at_block": 0.892,
+        "holdout_auc": 0.9166,
+        "block_threshold": 0.952,
+        "holdout_recall_at_block": 0.2657,
         "holdout_fpr_at_block": 0.0
       },
       "drop_d7": {
         "n_features": 28,
-        "holdout_auc": 0.9966,
-        "block_threshold": 0.328,
-        "holdout_recall_at_block": 0.9721,
-        "holdout_fpr_at_block": 0.0
+        "holdout_auc": 0.9577,
+        "block_threshold": 0.6038,
+        "holdout_recall_at_block": 0.6399,
+        "holdout_fpr_at_block": 0.0351
       }
     },
     "feature_origin": {

@@ -321,6 +321,7 @@ class AccountParams:
     effort: Optional[str]
     fit: TimingFit
     persona: Persona
+    retry_rate: float = 0.0
 
 
 def _account_params(key: str, p: Persona, fit: TimingFit, rng: random.Random) -> AccountParams:
@@ -331,7 +332,8 @@ def _account_params(key: str, p: Persona, fit: TimingFit, rng: random.Random) ->
     effort = "high" if rng.random() < p.effort_rate else None
     return AccountParams(
         key=key, temperature=round(rng.uniform(*p.temperature), 2), max_tokens=max_tokens, effort=effort,
-        fit=fit.perturbed(rng, p.timing_jitter) if p.timing_jitter else fit, persona=p)
+        fit=fit.perturbed(rng, p.timing_jitter) if p.timing_jitter else fit, persona=p,
+        retry_rate=rng.uniform(*p.retry_rate))
 
 
 def session_requests(msgs: list[Message], times: list[float], a: AccountParams, user: Optional[str],
@@ -344,6 +346,8 @@ def session_requests(msgs: list[Message], times: list[float], a: AccountParams, 
     tools = _TOOLS[p.schema_id]
     spread = CFG["sim"]["copy_spread_s"]
     out: list[SimRequest] = []
+    # A copy arrives before the next step: the next step needs the response to this one.
+    gaps = [b - a for a, b in zip(times, times[1:])] + [2 * spread]
     for idx, ((start, step), t) in enumerate(zip(steps, times)):
         body: dict[str, Any] = {"model": _MODEL, "messages": oa[:offsets[start]], "tools": tools,
                                 "temperature": a.temperature, "n": 1, "max_tokens": a.max_tokens}
@@ -353,9 +357,9 @@ def session_requests(msgs: list[Message], times: list[float], a: AccountParams, 
             body["user"] = user
         body["x_replay"] = {"step": [m.model_dump() for m in step]}
         final = idx == len(steps) - 1 and all(m.role != "tool_call" for m in step)
-        copies = _randint(rng, p.best_of_n) + int(rng.random() < p.retry_rate)
+        copies = _randint(rng, p.best_of_n) + int(rng.random() < a.retry_rate)
         for c in range(copies):
-            when = origin + t + (rng.uniform(0, spread) if c else 0.0)
+            when = origin + t + (rng.uniform(0, min(spread, gaps[idx] / 2)) if c else 0.0)
             out.append(SimRequest(when, a.key, body, p.name, ref, final))
     return out
 

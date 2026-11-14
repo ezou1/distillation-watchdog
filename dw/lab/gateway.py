@@ -262,7 +262,8 @@ def build_app(lab: Lab, lifespan: Lifespan | None = None) -> FastAPI:
 
     @app.get("/stats")
     async def stats() -> dict:
-        return {**lab.stats.snapshot(), "watchdog_connected": watchdog_connected(lab), "sim_time": lab.sim_now()}
+        return {**lab.stats.snapshot(), "watchdog_connected": watchdog_connected(lab),
+                "events_dropped": getattr(lab.sink, "dropped", 0), "sim_time": lab.sim_now()}
 
     return app
 
@@ -275,7 +276,8 @@ def render_view(lab: Lab) -> Any:
     return kv_table(f"Lab gateway :{CFG['ports']['lab']}", [
         ("requests/s", s["rps"]), ("served", s["served"]), ("blocked", s["blocked"]),
         ("errors", s["errors"]), ("handle() p50 ms", s["p50_ms"]), ("handle() p95 ms", s["p95_ms"]),
-        ("replay / live", f"{s['replay']} / {s['live']}"), ("sim time (UTC)", sim), ("watchdog", state)])
+        ("replay / live", f"{s['replay']} / {s['live']}"), ("sim time (UTC)", sim), ("watchdog", state),
+        ("events not sent to watchdog", getattr(lab.sink, "dropped", 0))])
 
 
 async def warn_if_down(lab: Lab) -> None:

@@ -25,7 +25,9 @@ def _f(x: Any, nd: int = 3) -> str:
     if x is None:
         return "n/a"
     if isinstance(x, float):
-        return f"{x:.{nd}f}"
+        if x.is_integer() and abs(x) >= 1:
+            return f"{int(x):,}"
+        return f"{x:,.1f}" if abs(x) >= 100 else f"{x:.{nd}f}"
     if isinstance(x, int):
         return f"{x:,}"
     return str(x)

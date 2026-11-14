@@ -31,7 +31,10 @@ SYSTEM = (
     "Write Markdown with these sections: ## Findings, ## Evidence, ## Confidence, ## Open questions, "
     "## Recommended action. Use short sentences. "
     "Every paragraph and every list item must cite one or more item IDs in square brackets, for example [ev-0000412]. "
-    "Cite only IDs from the input. Do not invent numbers."
+    "Cite only IDs from the input. Do not invent numbers. "
+    "A positive log_odds value points to an attack. A negative log_odds value points to normal use. "
+    "Items with the detector 'campaign' are links between accounts (shared tasks, shared templates, synchronized timing). "
+    "Cite only the IDs that support the sentence. Do not ask about data that the input does not have."
 )
 
 
@@ -123,8 +126,8 @@ def safe_subject(subject: dict[str, Any]) -> dict[str, Any]:
 
 
 def top_evidence(evidence: list[Evidence]) -> list[Evidence]:
-    """The heaviest evidence items (casefile.top_evidence), newest first among equals."""
-    ranked = sorted(evidence, key=lambda e: (-e.weight, -e.sim_time))
+    """The heaviest evidence items (casefile.top_evidence), newest first among equals. Campaign items come first."""
+    ranked = sorted(evidence, key=lambda e: (e.detector != "campaign", -e.weight, -e.sim_time))
     return ranked[:CFG["casefile"]["top_evidence"]]
 
 
@@ -165,6 +168,8 @@ async def write_casefile(case_id: str, subject: dict[str, Any], evidence: list[E
         if ok:
             result.update(status="ok", text=text, cited=cited)
             return result
+        log.warning("case file %s: validator rejected the text: %s", case_id, reason)
+        result["reason"] = reason
         messages = messages + [{"role": "assistant", "content": text},
                                {"role": "user", "content": f"Rejected: {reason}. Write it again. "
                                                            "Cite only the given IDs, in every paragraph."}]

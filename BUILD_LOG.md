@@ -37,6 +37,9 @@ Start time (UTC): 2026-11-14T08:02:05Z (see `.build_clock`).
 - D-29. LLM cost for the data build: about USD 2.36 on the helper model. No SWE-chat text went to OpenRouter.
 - D-30. The first full training run took 79 minutes. The limit is 10 CPU minutes. On this CPU, bge-small embeds 3 texts per second at 2,000 characters, and 34 texts per second at 256 characters. A batch size of 256 with 512-token texts used 8 GB of memory. Changes: the embedder reads the first 200 characters (`detectors.embed_max_chars`) with batch size 64. K-means uses a sample of 5,000 train first prompts.
 - D-31. A profile of the worker (27,316 requests in 150 s) showed three costs: the D6 shadow file system (`shlex` on the replay of branches), the D6 realism classifier, and the JSON encoding of each message in the prefix chain. Changes: a cache for the `shlex` tokens, the first 1,000 characters of a tool output for the realism classifier (in the pipeline, so training and inference are the same), and a bounded memo for message hashes (the hash values do not change).
+- D-32. Retry rate for each account. After the R1-H1 fix, `d1_dup_rate` still separated the classes alone (single-feature AUC 1.0 on the train and validation tables). The cause: one constant retry rate per persona (normal 0.03 to 0.06, stealth 0.35). Each account now draws its retry rate from a range in `config.yaml`. Normal and stealth ranges overlap. After the retrain, the best single feature has AUC 0.94 (train) and 0.97 (validation). `d1_dup_rate` has AUC 0.94 on validation.
+- D-33. A retry copy of one step arrived after the next step of the same session. This is not possible, because the next step needs the response. The copy spread is now at most half of the gap to the next step.
+- D-34. The README renderer writes whole numbers without decimals and large values with one decimal.
 
 ## Milestones
 
@@ -44,8 +47,22 @@ Start time (UTC): 2026-11-14T08:02:05Z (see `.build_clock`).
 |---|---|---|---|
 | M0 Preflight + contracts | 0:30 | 0:25 | Keys work. Both datasets are reachable. Contracts committed. 5 contract tests pass. |
 | M1 Parallel build | 3:30 | 0:41 | Six subagents. Each workstream passed its own tests on fixtures (commit 68039bf). The data build continued after this commit. |
+| M2 Integration | 4:30 | 8:43 | `scripts/smoke.sh` passed on the real models (6 of 6 checks). The first session stopped because of WSL memory and idle-stop problems (P-02). The build continued in a new session inside WSL. |
+| M3 Train + evaluate | 5:30 | 8:41 | Retrain after D-32. `train.sh` and `eval.sh` wrote all reports. The README renderer wrote the Results and Leakage controls sections. |
+| M4 Independent review + fixes | 6:30 | 8:57 | Reviewers 1, 2, and 3 are complete. All findings are fixed or recorded. |
+| M5 Demo hardening + README | 7:00 | 8:58 | README Limits has the training time, the format probe, the cross-harness result, and the stealth campaign result. 171 tests pass. |
 
 ## Cuts
+
+- Cut list item 2: D5 LLM template inversion (D-20). The skeleton count stays. The campaign field `template` is `null`.
+
+## Retrain result (after D-32)
+
+- Training: 432 s wall time, 1686 s CPU time. The limit of 10 CPU minutes is not met (P-01).
+- Validation account AUC 0.9997. Block threshold 0.555, review threshold 0.089 (from validation).
+- Holdout: account AUC 0.957. Per-request AUC 0.909. Falsely blocked normal accounts: 2 of 57. Attack accounts blocked: 0.892.
+- Stealth recall: 0.205 at account level, 0.205 after campaigns. The campaigns do not catch more stealth accounts.
+- Controls: format probe AUC 0.999 (fail), cross-harness hydra recall 0.690 against 0.561 (fail), label permutation mean AUC 0.462.
 
 ## Problems
 
@@ -77,3 +94,15 @@ Reviewer 1: ML audit (adversarial). Reviewer 2: code review. Reviewer 3: demo wa
 | R2-6 | Code | Medium | The agent shell can read `../.env`. | Recorded as a limit (D-24, README Limits). |
 | R2-7 | Code | Low | `bool("false")` is true in the approval handler. | Fixed. Only the JSON value `true` approves a command. |
 | R2-8..13 | Code | Low | DRY (two `ChatClient` protocols), the dashboard mock server, an unused config key, a long `create_app`, gzip size limit, ASD-STE100 passive voice. | Recorded. Not fixed in the time box, except the documentation sentences. |
+| R3-1 | Demo | High | Step 4: the agent shell had no `python` with pytest. The approved test run failed. | Fixed. `scripts/demo.sh` makes a separate venv `cache/agent_venv` with pytest. The agent shell PATH has it first. The project venv stays outside the agent PATH. |
+| R3-2 | Demo | Medium | A case file fell back with no reason in the response or the log. | Fixed. The watchdog logs the validator reason. The response has the field `reason`. |
+| R3-3 | Demo | Medium | The campaign case file did not cite the campaign evidence. The model read negative log-odds as attack signs. | Fixed. Campaign items come first in the evidence list. The prompt explains the sign of `log_odds` and the campaign items. |
+| R3-4 | Demo | Medium | About 14% of lab events did not arrive at the watchdog during the Hydra burst. The drop count was not visible. | Partly fixed. The sink timeout is 30 s (was 5 s). `GET /stats` and the lab pane show `events_dropped`. The cause is not confirmed. |
+| R3-5 | Demo | Medium | Step 6: campaigns did not catch stealth accounts. | Recorded. README Demo step 6 and Limits state the result. The holdout shows the same result. |
+| R3-6 | Demo | Low | Step 5: Hydra ends in about 90 s at the demo speed. The leaked count stops because the scenario ends. | Recorded. README Demo step 5 says this. |
+| R3-7 | Demo | Low | The demo changed `reports/llm_cost.json` (agent and case-file calls). | Recorded. We restored the build value before the commit. |
+| R3-8 | Demo | Low | `POST /api/session/new` needs `Content-Type: application/json`. `docs/API.md` did not say this. | Fixed in `docs/API.md`. |
+| R3-9 | Demo | Low | The account reasons show only positive terms, also for low-score accounts. | Recorded. |
+| R3-10 | Demo | Low | Evidence text contains harness strings from the data (for example `CLAUDE_CODE_EXECPATH`). | Recorded. Same as R1-M3. |
+| R3-11 | Demo | Low | The generator counter `leaked` also counts normal traffic. | Recorded. The counter counts complete trajectories for all personas. |
+| R3-12 | Demo | Low | Campaign `template` is `null`. | Recorded. Cut list item 2 (D-20). |

@@ -79,7 +79,8 @@ class HttpSink:
 
     async def _loop(self) -> None:
         interval = CFG["lab"]["ingest_interval_s"]
-        async with httpx.AsyncClient(timeout=5.0) as client:
+        # A busy watchdog answers slowly during a burst. A short timeout dropped batches (R3-4).
+        async with httpx.AsyncClient(timeout=30.0) as client:
             while True:
                 await asyncio.sleep(interval)
                 await self._flush(client)
@@ -121,7 +122,8 @@ class HttpBlocklist:
 
     async def _loop(self) -> None:
         interval = CFG["lab"]["blocklist_interval_s"]
-        async with httpx.AsyncClient(timeout=5.0) as client:
+        # A busy watchdog answers slowly during a burst. A short timeout dropped batches (R3-4).
+        async with httpx.AsyncClient(timeout=30.0) as client:
             while True:
                 try:
                     resp = await client.get(self.url)

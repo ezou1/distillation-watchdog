@@ -1,36 +1,36 @@
 {
   "train": {
     "load_splits": {
-      "wall_s": 6.29,
-      "cpu_s": 6.3,
-      "peak_rss_mb": 1883.1
+      "wall_s": 6.68,
+      "cpu_s": 6.7,
+      "peak_rss_mb": 1919.3
     },
     "d3_topics": {
-      "wall_s": 286.79,
-      "cpu_s": 574.3,
-      "peak_rss_mb": 3131.9
+      "wall_s": 0.96,
+      "cpu_s": 1.0,
+      "peak_rss_mb": 2436.4
     },
     "d4_elicitation": {
-      "wall_s": 13.55,
-      "cpu_s": 13.5,
-      "peak_rss_mb": 3465.7
+      "wall_s": 9.8,
+      "cpu_s": 9.8,
+      "peak_rss_mb": 2793.3
     },
     "d6_realism": {
-      "wall_s": 15.78,
-      "cpu_s": 15.8,
-      "peak_rss_mb": 3509.9
+      "wall_s": 12.17,
+      "cpu_s": 12.2,
+      "peak_rss_mb": 2836.5
     },
     "account_model": {
-      "wall_s": 558.06,
-      "cpu_s": 3465.8,
-      "peak_rss_mb": 3509.9
+      "wall_s": 398.45,
+      "cpu_s": 1650.7,
+      "peak_rss_mb": 2836.5
     },
-    "train_total_s": 884.2,
-    "train_total_cpu_s": 4079.8
+    "train_total_s": 432.2,
+    "train_total_cpu_s": 1685.5
   },
   "eval": {
-    "holdout_requests": 31725,
-    "wall_s": 187.0,
-    "requests_per_s": 169.7
+    "holdout_requests": 50767,
+    "wall_s": 97.1,
+    "requests_per_s": 522.6
   }
 }

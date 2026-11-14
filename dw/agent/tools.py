@@ -12,9 +12,10 @@ import subprocess
 from pathlib import Path
 from typing import Any, Callable
 
-from dw.common.config import CFG
+from dw.common.config import CFG, path
 
 SAFE_PATH = "/usr/local/bin:/usr/bin:/bin"
+TOOL_VENV = path("agent_tool_venv")
 
 
 class SandboxError(ValueError):
@@ -29,8 +30,14 @@ def truncate(text: str) -> str:
 
 
 def shell_env(root: Path) -> dict[str, str]:
-    """A minimal environment for shell commands. It has no variable from `.env` and no key."""
-    return {"PATH": SAFE_PATH, "HOME": str(root), "LANG": "C.UTF-8"}
+    """A minimal environment for shell commands. It has no variable from `.env` and no key.
+
+    If the tool venv exists (`scripts/demo.sh` makes it), its `python` and `pytest` come first in PATH.
+    It is a separate venv, so a `pip install` in the agent shell does not change the project venv.
+    """
+    bin_dir = TOOL_VENV / "bin"
+    search = f"{bin_dir}:{SAFE_PATH}" if bin_dir.is_dir() else SAFE_PATH
+    return {"PATH": search, "HOME": str(root), "LANG": "C.UTF-8"}
 
 
 class Sandbox:

@@ -143,8 +143,10 @@ def test_attack_request_parameters(holdout: Scenario) -> None:
     lo, hi = CFG["sim"]["personas"]["hydra"]["temperature"]
     assert all(lo <= r.body["temperature"] <= hi for r in hydra)
     assert all(schema_id_of(r.body["tools"]) == "standard_agent" for r in hydra)
+    # The rates are per account. Some seeds give no "high" account in a small scenario, so use three seeds.
+    more = [build_scenario("holdout", seed, "small", data_dir=FIX) for seed in (302, 303)]
     for persona in ("hydra", "solo_dev"):
-        rows = _of(holdout, persona)
+        rows = _of(holdout, persona) + [r for sc in more for r in _of(sc, persona)]
         efforts = {r.body.get("reasoning_effort") for r in rows}
         tokens = {r.body["max_tokens"] == cap for r in rows}
         assert efforts == {"high", None} and tokens == {True, False}, persona

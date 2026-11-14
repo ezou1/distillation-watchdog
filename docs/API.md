@@ -88,8 +88,11 @@ Response: `{"ok": true}`
 
 ```json
 {"rps": 412.5, "served": 10234, "blocked": 1820, "replay": 12040, "live": 14,
- "p50_ms": 0.9, "p95_ms": 2.7, "watchdog_connected": true, "sim_time": 1767574800.0}
+ "p50_ms": 0.9, "p95_ms": 2.7, "watchdog_connected": true,
+ "events_dropped": 0, "sim_time": 1767574800.0}
 ```
+
+`events_dropped` counts the request events that the lab could not send to the watchdog.
 
 ---
 
@@ -173,6 +176,8 @@ Returns the current conversation in the same format as `POST /api/chat` (status 
 ### `POST /api/session/new`
 
 Starts a new conversation. The sandbox files stay. Response: `{"ok": true}`
+
+Send the header `Content-Type: application/json` and a JSON body (`{}` is correct). Without it, the server returns 415. This protects against cross-site requests.
 
 ### `GET /api/files`
 
@@ -277,7 +282,7 @@ Returns the evidence item, the exact request, and the message that the evidence 
  "cited": ["ev-0000500"], "evidence": [{"id": "ev-0000500", "summary": "..."}]}
 ```
 
-If the validator rejects the LLM text two times, `status` is `fallback` and `text` is empty. The UI then shows only the evidence list.
+If the validator rejects the LLM text two times, `status` is `fallback` and `text` is empty. The UI then shows only the evidence list. The field `reason` gives the last rejection reason. The watchdog log also shows it.
 
 ### `GET /api/graph`
 

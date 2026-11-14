@@ -3,59 +3,59 @@
     "split": "holdout",
     "seed": 301,
     "scale": "full",
-    "requests": 31725,
+    "requests": 50767,
     "accounts": 352,
-    "scored_accounts": 344
+    "scored_accounts": 343
   },
   "thresholds": {
-    "block": 0.308899445223958,
-    "review": 0.11916511720012386
+    "block": 0.5550200728412171,
+    "review": 0.08873972362278004
   },
   "account_roc": {
-    "auc": 0.9959,
-    "accounts": 344,
-    "attack_accounts": 287
+    "auc": 0.9569,
+    "accounts": 343,
+    "attack_accounts": 286
   },
   "per_persona": {
     "hydra": {
       "accounts": 200,
-      "account_level_block": 200,
+      "account_level_block": 138,
       "account_level_review_or_block": 200,
       "final_block": 200,
       "final_review_or_block": 200,
       "disclosed": 0,
-      "rate_account_level_block": 1.0,
+      "rate_account_level_block": 0.69,
       "rate_final_block": 1.0
     },
     "fake_env": {
       "accounts": 47,
-      "account_level_block": 47,
+      "account_level_block": 31,
       "account_level_review_or_block": 47,
       "final_block": 47,
       "final_review_or_block": 47,
       "disclosed": 0,
-      "rate_account_level_block": 1.0,
+      "rate_account_level_block": 0.66,
       "rate_final_block": 1.0
     },
     "stealth": {
-      "accounts": 40,
-      "account_level_block": 33,
-      "account_level_review_or_block": 37,
-      "final_block": 33,
-      "final_review_or_block": 37,
+      "accounts": 39,
+      "account_level_block": 8,
+      "account_level_review_or_block": 11,
+      "final_block": 8,
+      "final_review_or_block": 11,
       "disclosed": 0,
-      "rate_account_level_block": 0.825,
-      "rate_final_block": 0.825
+      "rate_account_level_block": 0.205,
+      "rate_final_block": 0.205
     },
     "solo_dev": {
       "accounts": 53,
-      "account_level_block": 0,
-      "account_level_review_or_block": 2,
-      "final_block": 0,
-      "final_review_or_block": 2,
+      "account_level_block": 2,
+      "account_level_review_or_block": 4,
+      "final_block": 2,
+      "final_review_or_block": 4,
       "disclosed": 0,
-      "rate_account_level_block": 0.0,
-      "rate_final_block": 0.0
+      "rate_account_level_block": 0.038,
+      "rate_final_block": 0.038
     },
     "saas_app": {
       "accounts": 1,
@@ -79,14 +79,14 @@
     }
   },
   "campaign_effect": {
-    "stealth_accounts": 40,
-    "stealth_recall_account_level": 0.825,
-    "stealth_recall_after_campaigns": 0.825,
+    "stealth_accounts": 39,
+    "stealth_recall_account_level": 0.205,
+    "stealth_recall_after_campaigns": 0.205,
     "campaigns": [
       {
-        "id": "cmp-0003",
-        "size": 132,
-        "score": 5.983,
+        "id": "cmp-0002",
+        "size": 129,
+        "score": 4.876,
         "state": "block",
         "top_edge_types": [
           "shared_skeleton",
@@ -95,8 +95,8 @@
       },
       {
         "id": "cmp-0001",
-        "size": 123,
-        "score": 5.938,
+        "size": 121,
+        "score": 4.428,
         "state": "block",
         "top_edge_types": [
           "shared_skeleton",
@@ -110,72 +110,80 @@
       "hydra": {
         "accounts": 200,
         "blocked": 200,
-        "median_requests_to_block": 38.0,
-        "median_sim_minutes_to_block": 0.7
+        "median_requests_to_block": 73.0,
+        "median_sim_minutes_to_block": 2.8
       },
       "fake_env": {
         "accounts": 48,
         "blocked": 47,
-        "median_requests_to_block": 32.0,
-        "median_sim_minutes_to_block": 0.8
+        "median_requests_to_block": 38.0,
+        "median_sim_minutes_to_block": 2.1
       },
       "stealth": {
         "accounts": 40,
-        "blocked": 33,
-        "median_requests_to_block": 80.0,
-        "median_sim_minutes_to_block": 120.7
+        "blocked": 8,
+        "median_requests_to_block": 58.0,
+        "median_sim_minutes_to_block": 193.3
       }
     },
     "leakage": {
       "by_campaign": {
         "none": {
-          "served_trajectories": 297,
-          "possible_trajectories": 298
+          "served_trajectories": 347,
+          "possible_trajectories": 349
         },
-        "cmp-0003": {
-          "served_trajectories": 10,
-          "possible_trajectories": 10
+        "cmp-0001": {
+          "served_trajectories": 104,
+          "possible_trajectories": 105
+        },
+        "cmp-0002": {
+          "served_trajectories": 208,
+          "possible_trajectories": 209
         }
       },
       "by_persona": {
         "fake_env": {
-          "served_trajectories": 6,
-          "possible_trajectories": 6
+          "served_trajectories": 29,
+          "possible_trajectories": 29
+        },
+        "hydra": {
+          "served_trajectories": 284,
+          "possible_trajectories": 286
         },
         "solo_dev": {
-          "served_trajectories": 80,
-          "possible_trajectories": 80
-        },
-        "benchmark_runner": {
-          "served_trajectories": 83,
-          "possible_trajectories": 83
+          "served_trajectories": 86,
+          "possible_trajectories": 86
         },
         "stealth": {
-          "served_trajectories": 64,
-          "possible_trajectories": 65
+          "served_trajectories": 97,
+          "possible_trajectories": 99
         },
         "saas_app": {
           "served_trajectories": 74,
           "possible_trajectories": 74
+        },
+        "benchmark_runner": {
+          "served_trajectories": 89,
+          "possible_trajectories": 89
         }
       },
       "note": "possible_trajectories counts final steps the sender tried; a blocked session stops earlier, so this undercounts what the attacker wanted."
     }
   },
   "per_request_vs_per_account": {
-    "request_auc": 0.9858,
-    "request_best_threshold": 0.516028283772554,
-    "request_fpr_at_best": 0.0147,
-    "request_recall_at_best": 0.9035,
+    "request_auc": 0.909,
+    "request_threshold_from_val": 0.6287758023043517,
+    "request_fpr": 0.0974,
+    "request_recall": 0.7748,
     "requests_per_day": 10000000,
-    "false_request_flags_per_day": 147336,
+    "false_request_flags_per_day": 973937,
     "normal_accounts": 57,
-    "falsely_blocked_normal_accounts": 0,
-    "account_fpr": 0.0,
-    "attack_account_recall": 0.9756,
+    "falsely_blocked_normal_accounts": 2,
+    "account_fpr": 0.0351,
+    "attack_account_recall": 0.8916,
     "cumulative_example": {
-      "hydra": "acct abc16c",
-      "solo_dev": "acct ef447f"
+      "hydra": "acct 397fde",
+      "solo_dev": "acct cd9f94"
     }
   },
   "elicitation_bank_b": {
@@ -198,57 +206,57 @@
   },
   "fake_env": {
     "fake_env": {
-      "d6_contradictions_per_100": 0.2178,
-      "d6_contradiction_session_frac": 0.0426,
-      "d6_fake_prob_mean": 0.454
+      "d6_contradictions_per_100": 0.1457,
+      "d6_contradiction_session_frac": 0.0319,
+      "d6_fake_prob_mean": 0.452
     },
     "others": {
-      "d6_contradictions_per_100": 0.1274,
-      "d6_contradiction_session_frac": 0.0074,
-      "d6_fake_prob_mean": 0.3057
+      "d6_contradictions_per_100": 0.0582,
+      "d6_contradiction_session_frac": 0.0094,
+      "d6_fake_prob_mean": 0.3162
     },
     "realism_fpr_on_real_swechat_holdout": 0.0457,
     "realism_real_outputs_n": 3000
   },
   "generator_counters": {
     "hydra": {
-      "sent": 9628,
-      "served": 8596,
-      "blocked": 1032,
-      "leaked": 0,
+      "sent": 24288,
+      "served": 23335,
+      "blocked": 953,
+      "leaked": 46,
       "errors": 0
     },
     "fake_env": {
-      "sent": 1979,
-      "served": 1831,
-      "blocked": 148,
-      "leaked": 2,
-      "errors": 0
-    },
-    "solo_dev": {
-      "sent": 6198,
-      "served": 6198,
-      "blocked": 0,
-      "leaked": 80,
+      "sent": 2586,
+      "served": 2448,
+      "blocked": 138,
+      "leaked": 10,
       "errors": 0
     },
     "stealth": {
-      "sent": 4711,
-      "served": 4556,
-      "blocked": 155,
-      "leaked": 32,
+      "sent": 7122,
+      "served": 7080,
+      "blocked": 42,
+      "leaked": 82,
+      "errors": 0
+    },
+    "solo_dev": {
+      "sent": 6881,
+      "served": 6877,
+      "blocked": 4,
+      "leaked": 79,
       "errors": 0
     },
     "benchmark_runner": {
-      "sent": 4825,
-      "served": 4825,
+      "sent": 5130,
+      "served": 5130,
       "blocked": 0,
       "leaked": 83,
       "errors": 0
     },
     "saas_app": {
-      "sent": 4384,
-      "served": 4384,
+      "sent": 4760,
+      "served": 4760,
       "blocked": 0,
       "leaked": 74,
       "errors": 0
@@ -257,37 +265,37 @@
   "compute": {
     "train": {
       "load_splits": {
-        "wall_s": 6.29,
-        "cpu_s": 6.3,
-        "peak_rss_mb": 1883.1
+        "wall_s": 6.68,
+        "cpu_s": 6.7,
+        "peak_rss_mb": 1919.3
       },
       "d3_topics": {
-        "wall_s": 286.79,
-        "cpu_s": 574.3,
-        "peak_rss_mb": 3131.9
+        "wall_s": 0.96,
+        "cpu_s": 1.0,
+        "peak_rss_mb": 2436.4
       },
       "d4_elicitation": {
-        "wall_s": 13.55,
-        "cpu_s": 13.5,
-        "peak_rss_mb": 3465.7
+        "wall_s": 9.8,
+        "cpu_s": 9.8,
+        "peak_rss_mb": 2793.3
       },
       "d6_realism": {
-        "wall_s": 15.78,
-        "cpu_s": 15.8,
-        "peak_rss_mb": 3509.9
+        "wall_s": 12.17,
+        "cpu_s": 12.2,
+        "peak_rss_mb": 2836.5
       },
       "account_model": {
-        "wall_s": 558.06,
-        "cpu_s": 3465.8,
-        "peak_rss_mb": 3509.9
+        "wall_s": 398.45,
+        "cpu_s": 1650.7,
+        "peak_rss_mb": 2836.5
       },
-      "train_total_s": 884.2,
-      "train_total_cpu_s": 4079.8
+      "train_total_s": 432.2,
+      "train_total_cpu_s": 1685.5
     },
     "eval": {
-      "holdout_requests": 31725,
-      "wall_s": 187.0,
-      "requests_per_s": 169.7
+      "holdout_requests": 50767,
+      "wall_s": 97.1,
+      "requests_per_s": 522.6
     },
     "load": {
       "requests": 5000,

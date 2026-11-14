@@ -1,5 +1,7 @@
 # Handoff: state of the build on 2026-11-14
 
+> Status 2026-11-14 17:00Z: the remaining steps 1 to 9 below are complete. See BUILD_LOG "Retrain result", D-32 to D-34, and R3-1 to R3-12.
+
 This file is for the next Claude Code session. Read it, then `BUILD.md` (the specification) and `BUILD_LOG.md` (decisions, problems, reviewer findings).
 
 ## Where the work is

@@ -34,173 +34,173 @@
     }
   },
   "account_model": {
-    "train_accounts": 406,
+    "train_accounts": 413,
     "train_attack": 285,
     "val_accounts": 134,
     "thresholds": {
-      "block": 0.308899445223958,
-      "review": 0.11916511720012386
+      "block": 0.5550200728412171,
+      "review": 0.08873972362278004
     },
     "coefficients": [
       {
-        "name": "d1_dup_rate",
-        "coef": 1.7896
-      },
-      {
         "name": "d2_followup_rate",
-        "coef": -1.2769
+        "coef": -2.0358
       },
       {
         "name": "d6_fake_prob_mean",
-        "coef": 1.0821
-      },
-      {
-        "name": "d4_mean_temp",
-        "coef": 0.78
-      },
-      {
-        "name": "d4_elicit_mean",
-        "coef": 0.6384
-      },
-      {
-        "name": "d2_user_turns_per_session",
-        "coef": -0.6086
-      },
-      {
-        "name": "d7_mean_concurrent_sessions",
-        "coef": -0.6074
-      },
-      {
-        "name": "d1_max_dup",
-        "coef": 0.4282
+        "coef": 1.9753
       },
       {
         "name": "d3_repo_entropy",
-        "coef": 0.3995
+        "coef": 0.9859
+      },
+      {
+        "name": "d7_mean_concurrent_sessions",
+        "coef": -0.9097
       },
       {
         "name": "d3_topic_entropy",
-        "coef": 0.3719
+        "coef": 0.8431
       },
       {
-        "name": "d2_stop_end_frac",
-        "coef": -0.3647
+        "name": "d4_elicit_mean",
+        "coef": 0.8339
       },
       {
-        "name": "d3_distinct_repos",
-        "coef": -0.3591
+        "name": "d2_user_turns_per_session",
+        "coef": -0.6834
       },
       {
-        "name": "d7_req_per_active_hour",
-        "coef": 0.3434
+        "name": "d1_max_dup",
+        "coef": 0.5359
       },
       {
-        "name": "d4_elicit_max",
-        "coef": 0.3051
-      },
-      {
-        "name": "d6_contradiction_session_frac",
-        "coef": -0.1927
-      },
-      {
-        "name": "d3_sessions_per_repo",
-        "coef": -0.1885
-      },
-      {
-        "name": "d5_skeletons_per_session",
-        "coef": -0.1629
-      },
-      {
-        "name": "d5_template_mass",
-        "coef": 0.1501
-      },
-      {
-        "name": "d6_contradictions_per_100",
-        "coef": -0.1385
-      },
-      {
-        "name": "d5_top_skeleton_frac",
-        "coef": 0.1353
-      },
-      {
-        "name": "d4_elicit_frac",
-        "coef": 0.1167
-      },
-      {
-        "name": "d7_active_hours_per_day",
-        "coef": 0.1048
-      },
-      {
-        "name": "d1_cross_account_dup_rate",
-        "coef": -0.0934
-      },
-      {
-        "name": "d2_correction_rate",
-        "coef": -0.0666
-      },
-      {
-        "name": "d1_branch_frac",
-        "coef": -0.0608
-      },
-      {
-        "name": "d1_branch_factor",
-        "coef": -0.0526
+        "name": "d1_dup_rate",
+        "coef": 0.4948
       },
       {
         "name": "d7_max_concurrent_sessions",
-        "coef": -0.0505
+        "coef": -0.4626
       },
       {
-        "name": "d7_user_field_frac",
-        "coef": -0.0429
+        "name": "d7_req_per_active_hour",
+        "coef": 0.3086
       },
       {
-        "name": "d7_distinct_users",
-        "coef": -0.037
+        "name": "d3_sessions_per_repo",
+        "coef": -0.2674
       },
       {
-        "name": "d1_hot_dup_rate",
-        "coef": 0.0272
+        "name": "d4_elicit_max",
+        "coef": 0.258
       },
       {
-        "name": "d2_return_rate",
-        "coef": -0.0248
+        "name": "d3_distinct_repos",
+        "coef": -0.2465
       },
       {
-        "name": "d4_max_effort_frac",
-        "coef": 0.0225
+        "name": "d5_top_skeleton_frac",
+        "coef": 0.2447
+      },
+      {
+        "name": "d5_template_mass",
+        "coef": 0.2375
+      },
+      {
+        "name": "d4_elicit_frac",
+        "coef": -0.1873
       },
       {
         "name": "d4_max_tokens_frac",
-        "coef": 0.0225
+        "coef": 0.1567
+      },
+      {
+        "name": "d6_contradictions_per_100",
+        "coef": -0.1421
+      },
+      {
+        "name": "d7_active_hours_per_day",
+        "coef": 0.0956
+      },
+      {
+        "name": "d1_cross_account_dup_rate",
+        "coef": -0.0846
+      },
+      {
+        "name": "d6_contradiction_session_frac",
+        "coef": 0.0736
+      },
+      {
+        "name": "d2_stop_end_frac",
+        "coef": 0.0609
+      },
+      {
+        "name": "d1_hot_dup_rate",
+        "coef": 0.0425
+      },
+      {
+        "name": "d4_mean_temp",
+        "coef": 0.0414
+      },
+      {
+        "name": "d1_branch_factor",
+        "coef": -0.0377
+      },
+      {
+        "name": "d1_branch_frac",
+        "coef": -0.0375
+      },
+      {
+        "name": "d4_max_effort_frac",
+        "coef": 0.025
+      },
+      {
+        "name": "d5_skeletons_per_session",
+        "coef": -0.0187
+      },
+      {
+        "name": "d2_correction_rate",
+        "coef": -0.0175
+      },
+      {
+        "name": "d7_user_field_frac",
+        "coef": -0.0175
+      },
+      {
+        "name": "d7_distinct_users",
+        "coef": -0.0164
+      },
+      {
+        "name": "d2_return_rate",
+        "coef": -0.0113
       },
       {
         "name": "d4_n_gt1_rate",
         "coef": 0.0
       }
     ],
-    "val_auc": 1.0,
+    "val_auc": 0.9997300944669365,
     "request_rows": 200000,
     "request_coefficients": [
       {
         "name": "req_dup_count",
-        "coef": 11.4916
+        "coef": 4.0954
       },
       {
         "name": "req_user_present",
-        "coef": -4.9543
+        "coef": -3.0659
       },
       {
         "name": "req_temperature",
-        "coef": 2.7664
-      },
-      {
-        "name": "req_max_tokens",
-        "coef": 0.5918
+        "coef": 1.5454
       },
       {
         "name": "req_elicitation",
-        "coef": 0.4205
+        "coef": 1.0833
+      },
+      {
+        "name": "req_max_tokens",
+        "coef": 0.9842
       },
       {
         "name": "req_n",
