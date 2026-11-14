@@ -201,7 +201,10 @@ def test_banks_by_split(holdout: Scenario, train: Scenario) -> None:
     assert "[A]" in train_text and "[B]" not in train_text
 
 
-def test_full_stealth_only_in_holdout(holdout: Scenario, train: Scenario, val: Scenario) -> None:
+def test_full_stealth_only_in_holdout(holdout: Scenario, monkeypatch: pytest.MonkeyPatch) -> None:
+    """With train.full_stealth off, training and validation use the light stealth persona."""
+    monkeypatch.setitem(CFG["train"], "full_stealth", False)
+    train, val = _build("train", training=True), _build("val")
     hold = _all_user_text(holdout, "stealth")
     assert any(t.startswith("hey, quick one") for t in hold)                     # paraphrase
     assert any("ok that worked" in t for t in hold)                              # fake follow-up
@@ -240,10 +243,31 @@ def test_deterministic_and_persona_subset_stable() -> None:
     assert [r.key for r in a.requests] == [r.key for r in b.requests if r.persona == "hydra"]
 
 
-def test_training_randomization_changes_parameters() -> None:
+def test_training_randomization_changes_parameters(monkeypatch: pytest.MonkeyPatch) -> None:
+    monkeypatch.setitem(CFG["train"], "full_stealth", False)
     base = base_personas(full_stealth=False)
     rand = make_personas("train", True, random.Random(1))
     assert any(rand[p] != base[p] for p in ALL_PERSONAS)
     assert not rand["stealth"].paraphrase and rand["stealth"].swechat_mix == 0.0
     assert make_personas("holdout", False, random.Random(1))["stealth"].paraphrase
     assert not make_personas("val", False, random.Random(1))["stealth"].paraphrase
+
+
+def test_full_stealth_in_training_when_configured(monkeypatch: pytest.MonkeyPatch) -> None:
+    """train.full_stealth: the stealth persona of train and validation scenarios is the full persona (R1-M2)."""
+    monkeypatch.setitem(CFG["train"], "full_stealth", True)
+    for split, training in (("train", True), ("val", False), ("holdout", False)):
+        st = make_personas(split, training, random.Random(1))["stealth"]
+        assert st.paraphrase and st.swechat_mix > 0 and st.followups[1] > 0, split
+
+
+def test_counts_and_hydra_task_cap() -> None:
+    """The cross-harness control changes the hydra account count and cuts the hydra task pool."""
+    base = _build("holdout", personas=["hydra"])
+    fewer = _build("holdout", personas=["hydra"], counts={"hydra": 3})
+    capped = _build("holdout", personas=["hydra"], hydra_tasks=2)
+    n_acc = lambda sc: len({r.key for r in sc.requests})  # noqa: E731
+    n_task = lambda sc: len({_task(r.body) for r in sc.requests})  # noqa: E731
+    assert n_acc(fewer) <= 3 < n_acc(base)
+    assert n_task(capped) <= 2 < n_task(base)
+    assert all("swechat_frac" in lab for lab in base.labels.values())

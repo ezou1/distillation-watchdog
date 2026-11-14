@@ -6,6 +6,7 @@ export OMP_NUM_THREADS=1 OPENBLAS_NUM_THREADS=1 MKL_NUM_THREADS=1  # small per-r
 cd "$(dirname "$0")/.."
 PY=.venv/bin/python
 SPEED="${SPEED:-3000}"
+export DW_SIM_SPEED="$SPEED"   # the lab clock and the generators must use the same speed
 mkdir -p logs
 TMP=$(mktemp -d)
 scripts/stop.sh >/dev/null 2>&1
@@ -26,5 +27,9 @@ curl -s -X POST http://127.0.0.1:8010/admin/reset >/dev/null
 $PY -m dw.sim.cli --role normal --scale small --speed "$SPEED" --once --labels-out "$TMP/normal.json" & N=$!
 $PY -m dw.sim.cli --role attack --persona hydra --scale small --speed "$SPEED" --once --labels-out "$TMP/attack.json" || exit 1
 wait $N || exit 1
+for _ in $(seq 120); do   # wait until the watchdog has processed all events (at most 2 minutes)
+  [ "$(curl -s http://127.0.0.1:8010/api/summary | $PY -c 'import json,sys; print(json.load(sys.stdin)["queue_depth"])')" = "0" ] && break
+  sleep 1
+done
 sleep 12   # one rescore and one campaign pass in the watchdog
 $PY -m dw.eval.smoke_check "$TMP/normal.json" "$TMP/attack.json"

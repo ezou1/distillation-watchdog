@@ -71,7 +71,7 @@ split:
 synth:
   fake_frac: 0.4
   fake_sessions: {train: 300, val: 100, holdout: 150}
-  stealth_sessions: {train: 150, holdout: 150}
+  stealth_sessions: {train: 150, val: 100, holdout: 150}
   bank_size_elicit: 200
   bank_size_benign: 200
   bank_dedup_cos: 0.85
@@ -91,8 +91,10 @@ sim:
   scales:                      # accounts per persona
     small: {solo_dev: 8, saas_app: 1, benchmark_runner: 1, hydra: 12, fake_env: 4, stealth: 4}
     demo: {solo_dev: 40, saas_app: 3, benchmark_runner: 3, hydra: 60, fake_env: 15, stealth: 20}
-    full: {solo_dev: 150, saas_app: 3, benchmark_runner: 3, hydra: 200, fake_env: 50, stealth: 40}
-  sim_days: {small: 1, demo: 2, full: 3}
+    full: {solo_dev: 150, saas_app: 3, benchmark_runner: 10, hydra: 200, fake_env: 50, stealth: 40}
+    # train: more benchmark runners (normal accounts on Open-SWE data), so that "Open-SWE" does not mean "attack"
+    train: {solo_dev: 40, saas_app: 3, benchmark_runner: 8, hydra: 60, fake_env: 15, stealth: 20}
+  sim_days: {small: 1, demo: 2, full: 3, train: 2}
   personas:
     solo_dev:
       temperature: [0.0, 1.0]
@@ -109,8 +111,7 @@ sim:
       cap_rate: 0.05
       product_template: "[DevPilot] Customer request from the DevPilot web app:\n{prompt}\n\nAnswer as the DevPilot coding assistant."
     benchmark_runner:
-      tasks: 150
-      tasks_per_account: 50      # 3 accounts x 50 = 150 tasks
+      tasks_per_account: 50      # benchmark tasks per account
       attempts: [1, 3]
       temperature: [0.0, 0.8]
       quota: 20000
@@ -237,6 +238,8 @@ account:
   review_max_fpr: 0.05
   logreg_C: 1.0
   class_weight: balanced
+  z_clip: 5.0                   # standardized feature values are clipped to +-5 (training and scoring)
+  min_rel_std: 0.01             # features with a smaller training std (relative to max(1, |mean|)) are left out
   train_seeds: [101, 102, 103]
   val_seed: 201
   holdout_seed: 301
@@ -280,7 +283,8 @@ eval:
   load_concurrency: 64
 
 train:
-  scenario_scale: demo          # scale of the train and validation scenarios
+  scenario_scale: train         # scale of the train and validation scenarios
+  full_stealth: true            # full stealth persona also in train and validation (source protection, R1-M2)
   prompt_chars: 1500
   elicit_prompts: 3000
   realism_neg_ratio: 2

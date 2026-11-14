@@ -51,7 +51,10 @@ def test_fit_predict_contributions(tmp_path: Path) -> None:
     contrib = model.contributions(row)
     assert math.isclose(model.intercept + sum(contrib.values()), model.logit(row), rel_tol=1e-9)
     assert math.isclose(model.predict(row), 1 / (1 + math.exp(-model.logit(row))))
-    assert contrib["const"] == 0.0
+    assert "const" not in contrib and "const" not in model.names    # constant in training: left out
+    limit = CFG["account"]["z_clip"]
+    far = model.contributions({**row, "good": 1e9})["good"]          # far outside the training range
+    assert abs(far) <= abs(dict(zip(model.names, model.coef))["good"]) * limit + 1e-9
     assert model.contributions({})["good"] == 0.0               # missing feature = training mean
     val_rows, val_labels = _synthetic(400, 2)
     th = am.set_thresholds(model, val_rows, val_labels)

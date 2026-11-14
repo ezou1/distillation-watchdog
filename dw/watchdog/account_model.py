@@ -35,9 +35,12 @@ class LogitModel:
     thresholds: dict[str, float] = field(default_factory=dict)
 
     def _z(self, row: FeatureRow) -> np.ndarray:
-        """Standardized vector. A missing feature gets the training mean (contribution 0)."""
+        """Standardized vector, clipped to +-account.z_clip. A missing feature gets the training mean (contribution 0).
+
+        The clip stops one feature with a value far outside the training range from deciding the score alone.
+        """
         raw = np.array([row.get(n, m) for n, m in zip(self.names, self.mean)], dtype=float)
-        return (raw - self.mean) / self.scale
+        return _clip((raw - self.mean) / self.scale)
 
     def contributions(self, row: FeatureRow) -> dict[str, float]:
         """Per-feature contribution to the log-odds: coefficient times standardized value."""
@@ -70,17 +73,36 @@ def to_matrix(rows: Sequence[FeatureRow], names: list[str]) -> np.ndarray:
     return np.array([[float(r.get(n, 0.0)) for n in names] for r in rows], dtype=float)
 
 
+def _clip(z: np.ndarray) -> np.ndarray:
+    limit = float(CFG["account"]["z_clip"])
+    return np.clip(z, -limit, limit)
+
+
+def varying(X: np.ndarray, names: list[str]) -> list[int]:
+    """Indexes of the features that vary in training (std >= account.min_rel_std * max(1, |mean|)).
+
+    A feature that is constant in training carries no information. On live data it can take a value far
+    outside the training range (for example branches from requests that arrive out of order), so leave it out.
+    """
+    limit = float(CFG["account"]["min_rel_std"])
+    mean, std = X.mean(axis=0), X.std(axis=0)
+    return [i for i in range(len(names)) if std[i] >= limit * max(1.0, abs(mean[i]))]
+
+
 def fit(rows: Sequence[FeatureRow], labels: Sequence[int], names: list[str] | None = None,
         C: float | None = None) -> LogitModel:
-    """Fit a standardized logistic regression. Labels: 1 = attack, 0 = normal."""
+    """Fit a standardized logistic regression. Labels: 1 = attack, 0 = normal. Constant features are left out."""
     names = names or feature_names(rows)
     X = to_matrix(rows, names)
+    keep = varying(X, names)
+    if keep:
+        names, X = [names[i] for i in keep], X[:, keep]
     mean = X.mean(axis=0)
     scale = X.std(axis=0)
     scale[scale == 0] = 1.0
     clf = LogisticRegression(C=C or CFG["account"]["logreg_C"], class_weight=CFG["account"]["class_weight"],
                              max_iter=2000)
-    clf.fit((X - mean) / scale, np.asarray(labels, dtype=int))
+    clf.fit(_clip((X - mean) / scale), np.asarray(labels, dtype=int))
     return LogitModel(names=names, mean=mean, scale=scale, coef=clf.coef_[0].copy(),
                       intercept=float(clf.intercept_[0]))
 

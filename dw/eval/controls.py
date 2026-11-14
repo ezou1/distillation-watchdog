@@ -24,7 +24,7 @@ from dw.common import embed
 from dw.common.config import CFG, path
 from dw.data.normalize import FORBIDDEN
 from dw.sim.offline import run_offline
-from dw.sim.scenario import build_scenario
+from dw.sim.scenario import build_scenario, load_assets
 from dw.train.train_all import EMB_CACHE, FEATURES, MODELS, _auc, save_features
 from dw.watchdog import account_model as am
 from dw.watchdog.worker import Worker
@@ -282,6 +282,7 @@ class Table:
     y: list[int]
     personas: list[str]
     states: list[str | None]
+    swechat: list[float | None]      # share of SWE-chat sessions of the account (evaluation label)
 
     @classmethod
     def from_json(cls, data: dict[str, Any]) -> "Table":
@@ -289,11 +290,11 @@ class Table:
         lab = data["labels"]
         return cls(ids=ids, rows=[data["features"][a] for a in ids],
                    y=[int(lab[a]["role"] == "attack") for a in ids], personas=[lab[a]["persona"] for a in ids],
-                   states=[lab[a].get("state") for a in ids])
+                   states=[lab[a].get("state") for a in ids], swechat=[lab[a].get("swechat_frac") for a in ids])
 
     def __add__(self, other: "Table") -> "Table":
         return Table(self.ids + other.ids, self.rows + other.rows, self.y + other.y,
-                     self.personas + other.personas, self.states + other.states)
+                     self.personas + other.personas, self.states + other.states, self.swechat + other.swechat)
 
 
 def load_table(name: str, features_dir: Path = FEATURES) -> Table | None:
@@ -301,9 +302,13 @@ def load_table(name: str, features_dir: Path = FEATURES) -> Table | None:
     return Table.from_json(json.loads(file.read_text())) if file.exists() else None
 
 
-def holdout_table(xharness: bool, seed: int, models_dir: Path, data_dir: Path | None) -> Table:
-    """Run the holdout scenario offline with scoring. Cache the features (real data only) with the final state."""
-    scen = build_scenario("holdout", seed, CFG["eval"]["scale"], xharness=xharness, data_dir=data_dir)
+def holdout_table(xharness: bool, seed: int, models_dir: Path, data_dir: Path | None,
+                  name: str | None = None, **scenario_args: Any) -> Table:
+    """Run the holdout scenario offline with scoring. Cache the features (real data only) with the final state.
+
+    `scenario_args` go to `build_scenario` (`counts`, `hydra_tasks`). `name` is the cache file name.
+    """
+    scen = build_scenario("holdout", seed, CFG["eval"]["scale"], xharness=xharness, data_dir=data_dir, **scenario_args)
     worker = Worker(models_dir=models_dir, score=True)
     run_offline(scen, worker)
     keep = [a for a, acct in worker.accounts.items()
@@ -311,7 +316,7 @@ def holdout_table(xharness: bool, seed: int, models_dir: Path, data_dir: Path | 
     data = {"features": {a: dict(worker.accounts[a].features) for a in keep},
             "labels": {a: {**scen.labels[a], "state": worker.accounts[a].state} for a in keep}}
     if data_dir is None:
-        save_features(f"{'xharness' if xharness else 'holdout'}_{seed}", data["features"], data["labels"])
+        save_features(name or f"{'xharness' if xharness else 'holdout'}_{seed}", data["features"], data["labels"])
     return Table.from_json(data)
 
 
@@ -333,13 +338,69 @@ def recall_by_persona(model: am.LogitModel, table: Table) -> dict[str, dict[str,
     return out
 
 
-def cross_harness(model: am.LogitModel, normal: Table, xharness: Table) -> dict[str, Any]:
+def sessions_matched(seed: int, models_dir: Path, data_dir: Path | None) -> dict[str, Table]:
+    """Two scenario pairs with the same sessions per hydra account (diagnosis D-37).
+
+    A: the other harness with fewer hydra accounts, so each account gets as many sessions as in the main holdout.
+    B: the main data with the hydra task pool cut to the size of the other-harness slice (200 accounts).
+    """
+    n_tasks = len({s.task_key for s in load_assets("holdout", data_dir, True).xharness})
+    mean_sessions = float(np.mean(CFG["sim"]["personas"]["hydra"]["sessions_per_account"]))
+    n_accounts = max(CFG["campaign"]["min_size"], round(n_tasks / mean_sessions))
+    return {"xharness_matched": holdout_table(True, seed, models_dir, data_dir, f"xharness_matched_{seed}",
+                                              counts={"hydra": n_accounts}),
+            "main_small_pool": holdout_table(False, seed, models_dir, data_dir, f"main_small_pool_{seed}",
+                                             hydra_tasks=n_tasks)}
+
+
+def cross_harness(model: am.LogitModel, normal: Table, xharness: Table,
+                  matched: dict[str, Table] | None = None) -> dict[str, Any]:
+    out = _cross_harness(model, normal, xharness)
+    if matched:
+        out["option_a"] = {"main": out["normal"], "xharness": recall_by_persona(model, matched["xharness_matched"]),
+                           "note": "Other harness with fewer hydra accounts: same sessions per account as the main holdout."}
+        out["option_b"] = {"main": recall_by_persona(model, matched["main_small_pool"]), "xharness": out["xharness"],
+                           "note": "Main data with the hydra task pool cut to the other-harness slice size: "
+                                   "same sessions per account as the other harness."}
+    return out
+
+
+def _cross_harness(model: am.LogitModel, normal: Table, xharness: Table) -> dict[str, Any]:
     return {"normal": recall_by_persona(model, normal), "xharness": recall_by_persona(model, xharness),
             "holdout_auc": {"normal": _auc(normal.y, model.predict_many(normal.rows)),
                             "xharness": _auc(xharness.y, model.predict_many(xharness.rows))},
             "thresholds": model.thresholds,
             "note": "Saved model and validation thresholds. In 'xharness' the hydra persona replays the sweagent slice. "
                     "recall_block uses the account score only; worker_state_* include campaign propagation."}
+
+
+# ---------------------------------------------------------------- control 7: source reliance
+
+def source_reliance(model: am.LogitModel, table: Table) -> dict[str, Any]:
+    """Does the account score follow the data source when the label is the same? (format probe protection)
+
+    Normal accounts: Open-SWE based (benchmark runners) against SWE-chat based (solo developers, SaaS app).
+    An AUC near 0.5 means that the score does not follow the source. Stealth accounts: Spearman correlation
+    of the score with the share of SWE-chat sessions. A value near 0 means that the score does not follow the source.
+    """
+    from scipy.stats import spearmanr
+    scores = model.predict_many(table.rows)
+    block = model.thresholds["block"]
+    normal = [i for i, y in enumerate(table.y) if not y and table.swechat[i] is not None]
+    ose = [i for i in normal if table.swechat[i] < 0.5]
+    swe = [i for i in normal if table.swechat[i] >= 0.5]
+    group = lambda idx: {"accounts": len(idx), "mean_score": round(float(np.mean([scores[i] for i in idx])), 4) if idx else None,  # noqa: E731
+                         "blocked": int(sum(scores[i] >= block for i in idx))}
+    auc = _auc([1] * len(ose) + [0] * len(swe), [scores[i] for i in ose + swe]) if ose and swe else None
+    stealth = [i for i, p in enumerate(table.personas) if p == "stealth" and table.swechat[i] is not None]
+    rho = spearmanr([table.swechat[i] for i in stealth], [scores[i] for i in stealth]) if len(stealth) > 2 else None
+    return {"normal_openswe": group(ose), "normal_swechat": group(swe),
+            "normal_auc_openswe_vs_swechat": None if auc is None else round(auc, 4),
+            "stealth_accounts": len(stealth),
+            "stealth_spearman_swechat_share_vs_score": None if rho is None else round(float(rho.statistic), 4),
+            "stealth_spearman_p": None if rho is None else round(float(rho.pvalue), 4),
+            "note": "Saved model and validation thresholds on the holdout table. AUC near 0.5 and correlation near 0: "
+                    "the score does not follow the data source within one label."}
 
 
 # ---------------------------------------------------------------- control 5: label permutation
@@ -443,13 +504,15 @@ def model_controls(data_dir: Path | None, models_dir: Path, features_dir: Path) 
     if model is None:
         reason = "models/account_model.pkl missing: run dw.train.train_all first"
         return {"cross_harness": _skipped(reason), "label_permutation": _skipped(reason),
-                "feature_ablation": _skipped(reason)}
+                "feature_ablation": _skipped(reason), "source_reliance": _skipped(reason)}
     seed = CFG["account"]["holdout_seed"]
     embed.load_cache(EMB_CACHE)
     cached = load_table(f"holdout_{seed}", features_dir) if data_dir is None else None
     normal = cached or holdout_table(False, seed, models_dir, data_dir)
     xharness = holdout_table(True, seed, models_dir, data_dir)
-    out: dict[str, Any] = {"cross_harness": cross_harness(model, normal, xharness)}
+    matched = sessions_matched(seed, models_dir, data_dir)
+    out: dict[str, Any] = {"cross_harness": cross_harness(model, normal, xharness, matched),
+                           "source_reliance": source_reliance(model, normal)}
     train, val = train_tables(features_dir)
     if train is None or val is None:
         reason = f"cached train or val feature tables missing in {features_dir}"

@@ -3,59 +3,59 @@
     "split": "holdout",
     "seed": 301,
     "scale": "full",
-    "requests": 50767,
-    "accounts": 352,
-    "scored_accounts": 343
+    "requests": 57336,
+    "accounts": 359,
+    "scored_accounts": 350
   },
   "thresholds": {
-    "block": 0.5550200728412171,
-    "review": 0.08873972362278004
+    "block": 0.575368458737122,
+    "review": 0.1857701259235408
   },
   "account_roc": {
-    "auc": 0.9569,
-    "accounts": 343,
+    "auc": 0.952,
+    "accounts": 350,
     "attack_accounts": 286
   },
   "per_persona": {
     "hydra": {
       "accounts": 200,
-      "account_level_block": 138,
+      "account_level_block": 120,
       "account_level_review_or_block": 200,
       "final_block": 200,
       "final_review_or_block": 200,
       "disclosed": 0,
-      "rate_account_level_block": 0.69,
+      "rate_account_level_block": 0.6,
       "rate_final_block": 1.0
     },
     "fake_env": {
       "accounts": 47,
-      "account_level_block": 31,
+      "account_level_block": 27,
       "account_level_review_or_block": 47,
-      "final_block": 47,
+      "final_block": 46,
       "final_review_or_block": 47,
       "disclosed": 0,
-      "rate_account_level_block": 0.66,
-      "rate_final_block": 1.0
+      "rate_account_level_block": 0.574,
+      "rate_final_block": 0.979
     },
     "stealth": {
       "accounts": 39,
-      "account_level_block": 8,
-      "account_level_review_or_block": 11,
-      "final_block": 8,
-      "final_review_or_block": 11,
+      "account_level_block": 29,
+      "account_level_review_or_block": 36,
+      "final_block": 30,
+      "final_review_or_block": 36,
       "disclosed": 0,
-      "rate_account_level_block": 0.205,
-      "rate_final_block": 0.205
+      "rate_account_level_block": 0.744,
+      "rate_final_block": 0.769
     },
     "solo_dev": {
       "accounts": 53,
-      "account_level_block": 2,
-      "account_level_review_or_block": 4,
-      "final_block": 2,
-      "final_review_or_block": 4,
+      "account_level_block": 5,
+      "account_level_review_or_block": 8,
+      "final_block": 5,
+      "final_review_or_block": 8,
       "disclosed": 0,
-      "rate_account_level_block": 0.038,
-      "rate_final_block": 0.038
+      "rate_account_level_block": 0.094,
+      "rate_final_block": 0.094
     },
     "saas_app": {
       "accounts": 1,
@@ -68,25 +68,25 @@
       "rate_final_block": 0.0
     },
     "benchmark_runner": {
-      "accounts": 3,
+      "accounts": 10,
       "account_level_block": 0,
       "account_level_review_or_block": 0,
       "final_block": 0,
       "final_review_or_block": 0,
-      "disclosed": 3,
+      "disclosed": 10,
       "rate_account_level_block": 0.0,
       "rate_final_block": 0.0
     }
   },
   "campaign_effect": {
     "stealth_accounts": 39,
-    "stealth_recall_account_level": 0.205,
-    "stealth_recall_after_campaigns": 0.205,
+    "stealth_recall_account_level": 0.744,
+    "stealth_recall_after_campaigns": 0.769,
     "campaigns": [
       {
-        "id": "cmp-0002",
-        "size": 129,
-        "score": 4.876,
+        "id": "cmp-0001",
+        "size": 128,
+        "score": 4.497,
         "state": "block",
         "top_edge_types": [
           "shared_skeleton",
@@ -94,9 +94,9 @@
         ]
       },
       {
-        "id": "cmp-0001",
-        "size": 121,
-        "score": 4.428,
+        "id": "cmp-0002",
+        "size": 127,
+        "score": 4.444,
         "state": "block",
         "top_edge_types": [
           "shared_skeleton",
@@ -110,79 +110,79 @@
       "hydra": {
         "accounts": 200,
         "blocked": 200,
-        "median_requests_to_block": 73.0,
-        "median_sim_minutes_to_block": 2.8
+        "median_requests_to_block": 56.0,
+        "median_sim_minutes_to_block": 1.9
       },
       "fake_env": {
         "accounts": 48,
-        "blocked": 47,
-        "median_requests_to_block": 38.0,
-        "median_sim_minutes_to_block": 2.1
+        "blocked": 46,
+        "median_requests_to_block": 36.5,
+        "median_sim_minutes_to_block": 1.9
       },
       "stealth": {
         "accounts": 40,
-        "blocked": 8,
-        "median_requests_to_block": 58.0,
-        "median_sim_minutes_to_block": 193.3
+        "blocked": 29,
+        "median_requests_to_block": 72.0,
+        "median_sim_minutes_to_block": 609.3
       }
     },
     "leakage": {
       "by_campaign": {
-        "none": {
-          "served_trajectories": 347,
-          "possible_trajectories": 349
-        },
-        "cmp-0001": {
-          "served_trajectories": 104,
+        "cmp-0002": {
+          "served_trajectories": 105,
           "possible_trajectories": 105
         },
-        "cmp-0002": {
-          "served_trajectories": 208,
-          "possible_trajectories": 209
+        "cmp-0001": {
+          "served_trajectories": 122,
+          "possible_trajectories": 126
+        },
+        "none": {
+          "served_trajectories": 504,
+          "possible_trajectories": 507
         }
       },
       "by_persona": {
-        "fake_env": {
-          "served_trajectories": 29,
-          "possible_trajectories": 29
-        },
         "hydra": {
-          "served_trajectories": 284,
-          "possible_trajectories": 286
+          "served_trajectories": 203,
+          "possible_trajectories": 206
+        },
+        "fake_env": {
+          "served_trajectories": 17,
+          "possible_trajectories": 17
         },
         "solo_dev": {
-          "served_trajectories": 86,
-          "possible_trajectories": 86
+          "served_trajectories": 83,
+          "possible_trajectories": 83
         },
         "stealth": {
-          "served_trajectories": 97,
-          "possible_trajectories": 99
+          "served_trajectories": 50,
+          "possible_trajectories": 54
+        },
+        "benchmark_runner": {
+          "served_trajectories": 304,
+          "possible_trajectories": 304
         },
         "saas_app": {
           "served_trajectories": 74,
           "possible_trajectories": 74
-        },
-        "benchmark_runner": {
-          "served_trajectories": 89,
-          "possible_trajectories": 89
         }
       },
       "note": "possible_trajectories counts final steps the sender tried; a blocked session stops earlier, so this undercounts what the attacker wanted."
     }
   },
   "per_request_vs_per_account": {
-    "request_auc": 0.909,
-    "request_threshold_from_val": 0.6287758023043517,
-    "request_fpr": 0.0974,
-    "request_recall": 0.7748,
+    "request_auc": 0.9282,
+    "request_threshold_from_val": 0.4655391839117738,
+    "request_fpr": 0.0764,
+    "request_recall": 0.7916,
     "requests_per_day": 10000000,
-    "false_request_flags_per_day": 973937,
-    "normal_accounts": 57,
-    "falsely_blocked_normal_accounts": 2,
-    "account_fpr": 0.0351,
-    "attack_account_recall": 0.8916,
+    "false_request_flags_per_day": 763723,
+    "normal_accounts": 64,
+    "falsely_blocked_normal_accounts": 5,
+    "account_fpr": 0.0781,
+    "attack_account_recall": 0.965,
     "cumulative_example": {
-      "hydra": "acct 397fde",
+      "hydra": "acct 7407bc",
       "solo_dev": "acct cd9f94"
     }
   },
@@ -206,52 +206,52 @@
   },
   "fake_env": {
     "fake_env": {
-      "d6_contradictions_per_100": 0.1457,
+      "d6_contradictions_per_100": 0.1545,
       "d6_contradiction_session_frac": 0.0319,
-      "d6_fake_prob_mean": 0.452
+      "d6_fake_prob_mean": 0.4487
     },
     "others": {
-      "d6_contradictions_per_100": 0.0582,
-      "d6_contradiction_session_frac": 0.0094,
-      "d6_fake_prob_mean": 0.3162
+      "d6_contradictions_per_100": 0.0361,
+      "d6_contradiction_session_frac": 0.0087,
+      "d6_fake_prob_mean": 0.3122
     },
     "realism_fpr_on_real_swechat_holdout": 0.0457,
     "realism_real_outputs_n": 3000
   },
   "generator_counters": {
     "hydra": {
-      "sent": 24288,
-      "served": 23335,
-      "blocked": 953,
-      "leaked": 46,
+      "sent": 21795,
+      "served": 20821,
+      "blocked": 974,
+      "leaked": 34,
       "errors": 0
     },
     "fake_env": {
-      "sent": 2586,
-      "served": 2448,
-      "blocked": 138,
-      "leaked": 10,
+      "sent": 2507,
+      "served": 2365,
+      "blocked": 142,
+      "leaked": 6,
       "errors": 0
     },
     "stealth": {
-      "sent": 7122,
-      "served": 7080,
-      "blocked": 42,
-      "leaked": 82,
+      "sent": 4108,
+      "served": 3987,
+      "blocked": 121,
+      "leaked": 43,
       "errors": 0
     },
     "solo_dev": {
-      "sent": 6881,
-      "served": 6877,
-      "blocked": 4,
-      "leaked": 79,
+      "sent": 6514,
+      "served": 6499,
+      "blocked": 15,
+      "leaked": 76,
       "errors": 0
     },
     "benchmark_runner": {
-      "sent": 5130,
-      "served": 5130,
+      "sent": 17652,
+      "served": 17652,
       "blocked": 0,
-      "leaked": 83,
+      "leaked": 280,
       "errors": 0
     },
     "saas_app": {
@@ -265,37 +265,37 @@
   "compute": {
     "train": {
       "load_splits": {
-        "wall_s": 5.56,
-        "cpu_s": 5.6,
-        "peak_rss_mb": 1928.5
+        "wall_s": 5.89,
+        "cpu_s": 5.9,
+        "peak_rss_mb": 1925.4
       },
       "d3_topics": {
-        "wall_s": 0.93,
-        "cpu_s": 0.9,
-        "peak_rss_mb": 2445.6
+        "wall_s": 1.05,
+        "cpu_s": 1.0,
+        "peak_rss_mb": 2442.5
       },
       "d4_elicitation": {
-        "wall_s": 9.45,
-        "cpu_s": 9.4,
-        "peak_rss_mb": 2807.9
+        "wall_s": 9.55,
+        "cpu_s": 9.5,
+        "peak_rss_mb": 2797.6
       },
       "d6_realism": {
-        "wall_s": 12.87,
-        "cpu_s": 12.9,
-        "peak_rss_mb": 2834.0
+        "wall_s": 11.76,
+        "cpu_s": 11.7,
+        "peak_rss_mb": 2830.3
       },
       "account_model": {
-        "wall_s": 191.42,
-        "cpu_s": 377.5,
-        "peak_rss_mb": 2834.0
+        "wall_s": 213.17,
+        "cpu_s": 418.8,
+        "peak_rss_mb": 2830.3
       },
-      "train_total_s": 224.5,
-      "train_total_cpu_s": 411.7
+      "train_total_s": 245.6,
+      "train_total_cpu_s": 452.5
     },
     "eval": {
-      "holdout_requests": 50767,
-      "wall_s": 56.8,
-      "requests_per_s": 893.1
+      "holdout_requests": 57336,
+      "wall_s": 71.8,
+      "requests_per_s": 798.7
     },
     "load": {
       "requests": 5000,

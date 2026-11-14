@@ -145,8 +145,14 @@ def randomize(persona: Persona, rng: random.Random, frac: float) -> Persona:
 
 
 def make_personas(split: str, training: bool, rng: random.Random) -> dict[str, Persona]:
-    """Persona configurations for a scenario. Full stealth only for the holdout split outside training."""
-    personas = base_personas(full_stealth=(split == "holdout" and not training))
+    """Persona configurations for a scenario.
+
+    Full stealth (paraphrased prompts, follow-ups, SWE-chat sessions) in the holdout. With `train.full_stealth`,
+    also in the train and validation scenarios: then the attack accounts in training do not all have one user turn
+    per session, so the model cannot learn "one user turn = attack" (a source shortcut, R1-M2).
+    """
+    full = (split == "holdout" and not training) or bool(CFG["train"].get("full_stealth", False))
+    personas = base_personas(full_stealth=full)
     if training:
         frac = CFG["sim"]["train_randomization"]
         personas = {name: randomize(p, rng, frac) for name, p in personas.items()}

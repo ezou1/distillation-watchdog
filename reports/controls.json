@@ -111,22 +111,22 @@
     "normal": {
       "fake_env": {
         "accounts": 47,
-        "recall_block": 0.6596,
-        "share_review_only": 0.3404,
+        "recall_block": 0.5745,
+        "share_review_only": 0.4255,
         "worker_state_block": null,
         "worker_state_review": null
       },
       "hydra": {
         "accounts": 200,
-        "recall_block": 0.69,
-        "share_review_only": 0.31,
+        "recall_block": 0.6,
+        "share_review_only": 0.4,
         "worker_state_block": null,
         "worker_state_review": null
       },
       "stealth": {
         "accounts": 39,
-        "recall_block": 0.2051,
-        "share_review_only": 0.0769,
+        "recall_block": 0.7436,
+        "share_review_only": 0.1795,
         "worker_state_block": null,
         "worker_state_review": null
       }
@@ -134,63 +134,178 @@
     "xharness": {
       "fake_env": {
         "accounts": 47,
-        "recall_block": 0.6383,
-        "share_review_only": 0.3617,
+        "recall_block": 0.6809,
+        "share_review_only": 0.3191,
         "worker_state_block": 1.0,
         "worker_state_review": 0.0
       },
       "hydra": {
         "accounts": 82,
-        "recall_block": 0.561,
-        "share_review_only": 0.4024,
-        "worker_state_block": 0.8293,
-        "worker_state_review": 0.1341
+        "recall_block": 0.4878,
+        "share_review_only": 0.4512,
+        "worker_state_block": 0.9024,
+        "worker_state_review": 0.0366
       },
       "stealth": {
         "accounts": 39,
-        "recall_block": 0.2821,
-        "share_review_only": 0.0769,
-        "worker_state_block": 0.2821,
-        "worker_state_review": 0.0769
+        "recall_block": 0.7436,
+        "share_review_only": 0.1795,
+        "worker_state_block": 0.7692,
+        "worker_state_review": 0.1538
       }
     },
     "holdout_auc": {
-      "normal": 0.9568764568764568,
-      "xharness": 0.9456975772765247
+      "normal": 0.9519777097902098,
+      "xharness": 0.9499627976190476
     },
     "thresholds": {
-      "block": 0.5550200728412171,
-      "review": 0.08873972362278004
+      "block": 0.575368458737122,
+      "review": 0.1857701259235408
     },
-    "note": "Saved model and validation thresholds. In 'xharness' the hydra persona replays the sweagent slice. recall_block uses the account score only; worker_state_* include campaign propagation."
+    "note": "Saved model and validation thresholds. In 'xharness' the hydra persona replays the sweagent slice. recall_block uses the account score only; worker_state_* include campaign propagation.",
+    "option_a": {
+      "main": {
+        "fake_env": {
+          "accounts": 47,
+          "recall_block": 0.5745,
+          "share_review_only": 0.4255,
+          "worker_state_block": null,
+          "worker_state_review": null
+        },
+        "hydra": {
+          "accounts": 200,
+          "recall_block": 0.6,
+          "share_review_only": 0.4,
+          "worker_state_block": null,
+          "worker_state_review": null
+        },
+        "stealth": {
+          "accounts": 39,
+          "recall_block": 0.7436,
+          "share_review_only": 0.1795,
+          "worker_state_block": null,
+          "worker_state_review": null
+        }
+      },
+      "xharness": {
+        "fake_env": {
+          "accounts": 47,
+          "recall_block": 0.6596,
+          "share_review_only": 0.3404,
+          "worker_state_block": 0.9787,
+          "worker_state_review": 0.0213
+        },
+        "hydra": {
+          "accounts": 27,
+          "recall_block": 0.8148,
+          "share_review_only": 0.1852,
+          "worker_state_block": 1.0,
+          "worker_state_review": 0.0
+        },
+        "stealth": {
+          "accounts": 39,
+          "recall_block": 0.7692,
+          "share_review_only": 0.1538,
+          "worker_state_block": 0.7949,
+          "worker_state_review": 0.1282
+        }
+      },
+      "note": "Other harness with fewer hydra accounts: same sessions per account as the main holdout."
+    },
+    "option_b": {
+      "main": {
+        "fake_env": {
+          "accounts": 47,
+          "recall_block": 0.6383,
+          "share_review_only": 0.3617,
+          "worker_state_block": 0.9787,
+          "worker_state_review": 0.0213
+        },
+        "hydra": {
+          "accounts": 82,
+          "recall_block": 0.5244,
+          "share_review_only": 0.4024,
+          "worker_state_block": 0.9146,
+          "worker_state_review": 0.0122
+        },
+        "stealth": {
+          "accounts": 39,
+          "recall_block": 0.7436,
+          "share_review_only": 0.1795,
+          "worker_state_block": 0.7949,
+          "worker_state_review": 0.1282
+        }
+      },
+      "xharness": {
+        "fake_env": {
+          "accounts": 47,
+          "recall_block": 0.6809,
+          "share_review_only": 0.3191,
+          "worker_state_block": 1.0,
+          "worker_state_review": 0.0
+        },
+        "hydra": {
+          "accounts": 82,
+          "recall_block": 0.4878,
+          "share_review_only": 0.4512,
+          "worker_state_block": 0.9024,
+          "worker_state_review": 0.0366
+        },
+        "stealth": {
+          "accounts": 39,
+          "recall_block": 0.7436,
+          "share_review_only": 0.1795,
+          "worker_state_block": 0.7692,
+          "worker_state_review": 0.1538
+        }
+      },
+      "note": "Main data with the hydra task pool cut to the other-harness slice size: same sessions per account as the other harness."
+    }
+  },
+  "source_reliance": {
+    "normal_openswe": {
+      "accounts": 10,
+      "mean_score": 0.0124,
+      "blocked": 0
+    },
+    "normal_swechat": {
+      "accounts": 54,
+      "mean_score": 0.1022,
+      "blocked": 5
+    },
+    "normal_auc_openswe_vs_swechat": 0.5167,
+    "stealth_accounts": 39,
+    "stealth_spearman_swechat_share_vs_score": 0.1504,
+    "stealth_spearman_p": 0.3607,
+    "note": "Saved model and validation thresholds on the holdout table. AUC near 0.5 and correlation near 0: the score does not follow the data source within one label."
   },
   "label_permutation": {
     "runs": 20,
     "holdout_aucs": [
-      0.8124,
-      0.4699,
-      0.3263,
-      0.255,
-      0.1966,
-      0.709,
-      0.3902,
-      0.2616,
-      0.2384,
-      0.1508,
-      0.1034,
-      0.8439,
-      0.7998,
-      0.2088,
-      0.6845,
-      0.6986,
-      0.8503,
-      0.2241,
-      0.7598,
-      0.2572
+      0.6858,
+      0.1024,
+      0.5527,
+      0.4048,
+      0.6925,
+      0.7344,
+      0.378,
+      0.4345,
+      0.289,
+      0.2699,
+      0.1763,
+      0.3525,
+      0.228,
+      0.5409,
+      0.4017,
+      0.271,
+      0.7889,
+      0.7652,
+      0.2066,
+      0.2603
     ],
-    "mean_auc": 0.462,
-    "std_auc": 0.2649,
-    "true_label_auc": 0.9569,
+    "mean_auc": 0.4268,
+    "std_auc": 0.2083,
+    "true_label_auc": 0.952,
     "p_value": 0.0476,
     "note": "Account model retrained on train tables with shuffled labels; AUC on the holdout table. One shuffle gives a random weight direction, so one run can be far from 0.5 when the features separate the classes. With unequal classes, outlier accounts get the majority label more often, which can move the mean away from 0.5 in either direction. p_value = share of shuffled runs with AUC >= the true-label AUC."
   },
@@ -198,80 +313,80 @@
     "variants": {
       "all": {
         "n_features": 34,
-        "holdout_auc": 0.9569,
-        "block_threshold": 0.555,
-        "holdout_recall_at_block": 0.6189,
-        "holdout_fpr_at_block": 0.0351
+        "holdout_auc": 0.952,
+        "block_threshold": 0.5754,
+        "holdout_recall_at_block": 0.6154,
+        "holdout_fpr_at_block": 0.0781
       },
       "spec_real_data (B10 6a)": {
         "n_features": 18,
-        "holdout_auc": 0.9228,
-        "block_threshold": 0.4937,
-        "holdout_recall_at_block": 0.4196,
-        "holdout_fpr_at_block": 0.0351
+        "holdout_auc": 0.7868,
+        "block_threshold": 0.5155,
+        "holdout_recall_at_block": 0.3671,
+        "holdout_fpr_at_block": 0.1406
       },
       "strict_real_data": {
         "n_features": 11,
-        "holdout_auc": 0.8009,
-        "block_threshold": 0.5316,
-        "holdout_recall_at_block": 0.2972,
-        "holdout_fpr_at_block": 0.0526
+        "holdout_auc": 0.55,
+        "block_threshold": 0.9651,
+        "holdout_recall_at_block": 0.0629,
+        "holdout_fpr_at_block": 0.0156
       },
       "simulator_only": {
         "n_features": 14,
-        "holdout_auc": 0.9535,
-        "block_threshold": 0.6209,
-        "holdout_recall_at_block": 0.8322,
+        "holdout_auc": 0.9762,
+        "block_threshold": 0.4923,
+        "holdout_recall_at_block": 0.8706,
         "holdout_fpr_at_block": 0.0
       },
       "drop_d1": {
         "n_features": 28,
-        "holdout_auc": 0.9499,
-        "block_threshold": 0.6734,
-        "holdout_recall_at_block": 0.3497,
-        "holdout_fpr_at_block": 0.0351
+        "holdout_auc": 0.8537,
+        "block_threshold": 0.6493,
+        "holdout_recall_at_block": 0.2028,
+        "holdout_fpr_at_block": 0.0781
       },
       "drop_d2": {
         "n_features": 29,
-        "holdout_auc": 0.9576,
-        "block_threshold": 0.318,
-        "holdout_recall_at_block": 0.7587,
-        "holdout_fpr_at_block": 0.0877
+        "holdout_auc": 0.9652,
+        "block_threshold": 0.802,
+        "holdout_recall_at_block": 0.5524,
+        "holdout_fpr_at_block": 0.0
       },
       "drop_d3": {
         "n_features": 30,
-        "holdout_auc": 0.9622,
-        "block_threshold": 0.9594,
-        "holdout_recall_at_block": 0.6014,
-        "holdout_fpr_at_block": 0.0
+        "holdout_auc": 0.9966,
+        "block_threshold": 0.4087,
+        "holdout_recall_at_block": 0.9755,
+        "holdout_fpr_at_block": 0.0469
       },
       "drop_d4": {
         "n_features": 27,
-        "holdout_auc": 0.9555,
-        "block_threshold": 0.2853,
-        "holdout_recall_at_block": 0.8357,
-        "holdout_fpr_at_block": 0.0351
+        "holdout_auc": 0.944,
+        "block_threshold": 0.2941,
+        "holdout_recall_at_block": 0.8706,
+        "holdout_fpr_at_block": 0.125
       },
       "drop_d5": {
         "n_features": 31,
-        "holdout_auc": 0.9572,
-        "block_threshold": 0.3132,
-        "holdout_recall_at_block": 0.8916,
-        "holdout_fpr_at_block": 0.0351
+        "holdout_auc": 0.9796,
+        "block_threshold": 0.475,
+        "holdout_recall_at_block": 0.9231,
+        "holdout_fpr_at_block": 0.0781
       },
       "drop_d6": {
         "n_features": 31,
-        "holdout_auc": 0.9166,
-        "block_threshold": 0.952,
-        "holdout_recall_at_block": 0.2657,
-        "holdout_fpr_at_block": 0.0
+        "holdout_auc": 0.8102,
+        "block_threshold": 0.8451,
+        "holdout_recall_at_block": 0.1783,
+        "holdout_fpr_at_block": 0.0312
       },
       "drop_d7": {
         "n_features": 28,
-        "holdout_auc": 0.9577,
-        "block_threshold": 0.6038,
-        "holdout_recall_at_block": 0.6399,
-        "holdout_fpr_at_block": 0.0351
+        "holdout_auc": 0.9641,
+        "block_threshold": 0.5474,
+        "holdout_recall_at_block": 0.7483,
+        "holdout_fpr_at_block": 0.0781
       }
     },
     "feature_origin": {

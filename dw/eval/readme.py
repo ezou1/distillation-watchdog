@@ -128,9 +128,18 @@ def controls(c: dict[str, Any]) -> str:
         ["3. Assistant-prose probe (source from prose)", f"AUC {_f(pp.get('auc_holdout'))}", "high (expected)", "info"],
         ["4. Cross-harness (hydra on SWE-agent data)", f"hydra recall {_f(hydra('normal'))} (normal), {_f(hydra('xharness'))} (other harness)",
          "same recall", "pass" if hydra("xharness") is not None and hydra("xharness") >= (hydra("normal") or 0) - 0.05 else "fail"],
+        *_matched_rows(ch),
         ["5. Label permutation", f"mean AUC {_f(lp.get('mean_auc'))} (std {_f(lp.get('std_auc'))}), p = {_f(lp.get('p_value'))}",
          "near 0.5", "see note"],
     ]
+    sr = c.get("source_reliance") or {}
+    if "normal_auc_openswe_vs_swechat" in sr:
+        o, w = sr["normal_openswe"], sr["normal_swechat"]
+        rows.append(["7. Source reliance (score against data source, same label)",
+                     f"normal accounts: AUC {_f(sr['normal_auc_openswe_vs_swechat'])} (Open-SWE {o['accounts']} accounts, "
+                     f"{o['blocked']} blocked; SWE-chat {w['accounts']} accounts, {w['blocked']} blocked); "
+                     f"stealth: Spearman {_f(sr['stealth_spearman_swechat_share_vs_score'])} (p = {_f(sr['stealth_spearman_p'])})",
+                     "AUC near 0.5, correlation near 0", "info"])
     parts = [_table(["Control", "Result", "Target", "Status"], rows), ""]
     parts.append("6. Feature-family ablation (fit on train, thresholds on validation, results on holdout):")
     parts.append("")
@@ -143,6 +152,22 @@ def controls(c: dict[str, Any]) -> str:
     if top:
         parts += ["", f"Largest format-probe features: {top}."]
     return "\n".join(parts)
+
+
+def _matched_rows(ch: dict[str, Any]) -> list[list[Any]]:
+    """Rows for the cross-harness options with the same sessions per hydra account on both sides."""
+    rows = []
+    for key, title in (("option_a", "4a. Cross-harness, same sessions per account (fewer SWE-agent accounts)"),
+                       ("option_b", "4b. Cross-harness, same sessions per account (main data, small task pool)")):
+        opt = ch.get(key)
+        if not opt:
+            continue
+        main, other = (opt[side].get("hydra", {}) for side in ("main", "xharness"))
+        m, x = main.get("recall_block"), other.get("recall_block")
+        rows.append([title, f"hydra recall {_f(m)} (main, {main.get('accounts')} accounts), "
+                            f"{_f(x)} (other harness, {other.get('accounts')} accounts)", "same recall",
+                     "pass" if m is not None and x is not None and x >= m - 0.05 else "fail"])
+    return rows
 
 
 def _replace(text: str, tag: str, body: str) -> str:

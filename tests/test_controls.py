@@ -71,7 +71,7 @@ def _table(n: int, seed: int, signal: bool = True) -> c.Table:
     rows = [{"d1_dup_rate": rng.gauss(2.0 * yi if signal else 0.0, 1.0), "d2_followup_rate": rng.gauss(0, 1),
              "d7_req_per_active_hour": rng.gauss(yi, 1.0)} for yi in y]
     return c.Table([f"a{seed}-{i}" for i in range(n)], rows, y, ["hydra" if yi else "solo_dev" for yi in y],
-                   [None] * n)
+                   [None] * n, [None] * n)
 
 
 def test_permutation_auc_near_chance() -> None:
@@ -108,3 +108,20 @@ def test_recall_by_persona_uses_saved_thresholds() -> None:
     out = c.recall_by_persona(model, _table(100, 2))
     assert set(out) == {"hydra"} and out["hydra"]["worker_state_block"] is None
     assert abs(out["hydra"]["recall_block"] + out["hydra"]["share_review_only"] - 1.0) < 1e-3
+
+
+def test_source_reliance_follows_the_source_only_when_the_score_does() -> None:
+    """Normal accounts from two sources: the AUC is high only if the score depends on the source."""
+    train = _table(300, 1)
+    model = c.am.fit(train.rows, train.y)
+    model.thresholds = {"block": 0.99, "review": 0.5}
+    rng = random.Random(3)
+    n = 200
+    for leak, check in ((False, lambda a: 0.35 < a < 0.65), (True, lambda a: a > 0.9)):
+        src = [float(i % 2) for i in range(n)]          # 1.0 = SWE-chat, 0.0 = Open-SWE
+        rows = [{"d1_dup_rate": rng.gauss(2.0 * (1 - s) if leak else 0.0, 0.5), "d2_followup_rate": 0.0,
+                 "d7_req_per_active_hour": 0.0} for s in src]
+        table = c.Table([f"n{i}" for i in range(n)], rows, [0] * n, ["solo_dev"] * n, [None] * n, src)
+        out = c.source_reliance(model, table)
+        assert out["normal_openswe"]["accounts"] == out["normal_swechat"]["accounts"] == n // 2
+        assert check(out["normal_auc_openswe_vs_swechat"]), out

@@ -390,7 +390,8 @@ def _build_persona(out: _Build, p: Persona, assigned: Assigned, assets: Assets, 
     gap = tuple(CFG["sim"]["bench_gap_s"])
     for sessions in assigned:
         key = _new_key(rng, out.keys)
-        out.labels[key] = {"persona": p.name, "role": p.role}
+        swechat = sum(s.source == "swechat" for s, _ in sessions) / max(1, len(sessions))
+        out.labels[key] = {"persona": p.name, "role": p.role, "swechat_frac": round(swechat, 3)}  # evaluation only
         if p.declared_use:
             out.registrations.append({"account_id": key, "declared_use": p.declared_use, "quota": p.quota})
         a = _account_params(key, p, assets.fit, rng)
@@ -403,15 +404,23 @@ def _build_persona(out: _Build, p: Persona, assigned: Assigned, assets: Assets, 
 
 
 def build_scenario(split: str, seed: int, scale: str, personas: list[str] | None = None,
-                   training: bool = False, xharness: bool = False, data_dir: Path | None = None) -> Scenario:
-    """Build the scenario for one split. Reads only that split file and the matching synthetic assets."""
+                   training: bool = False, xharness: bool = False, data_dir: Path | None = None,
+                   counts: dict[str, int] | None = None, hydra_tasks: int | None = None) -> Scenario:
+    """Build the scenario for one split. Reads only that split file and the matching synthetic assets.
+
+    `counts` replaces the account count of some personas. `hydra_tasks` keeps only the first N hydra tasks.
+    The cross-harness control uses both to compare scenarios with the same sessions per account.
+    """
     if split not in ("train", "val", "holdout"):
         raise ValueError(f"unknown split {split}")
     rng = random.Random(f"{seed}|{split}|{scale}|{training}")
     assets = load_assets(split, data_dir, xharness)
     configs = make_personas(split, training, rng)
-    counts = {name: int(CFG["sim"]["scales"][scale][name]) for name in ALL_PERSONAS}
+    counts = {**{name: int(CFG["sim"]["scales"][scale][name]) for name in ALL_PERSONAS}, **(counts or {})}
     pools = build_pools(assets, configs, counts, rng)
+    if hydra_tasks is not None:
+        pools.openswe["hydra"] = pools.openswe["hydra"][:hydra_tasks]
+        pools.xharness = pools.xharness[:hydra_tasks]
     days = int(CFG["sim"]["sim_days"][scale])
     origin = float(CFG["sim"]["epoch_start"])
     out = _Build()

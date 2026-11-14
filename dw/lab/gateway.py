@@ -98,9 +98,14 @@ class Lab:
         self._start_real = time.time()
 
     def sim_now(self) -> float:
-        """The lab clock: simulation time that runs `sim.speed` times faster than real time."""
+        """The lab clock: simulation time that runs `sim.speed` times faster than real time.
+
+        `DW_SIM_SPEED` replaces `sim.speed`. The generators must use the same speed, else simulation time
+        is compressed or stretched (the smoke test runs faster than the demo).
+        """
         sim = CFG["sim"]
-        return sim["epoch_start"] + (time.time() - self._start_real) * sim["speed"]
+        speed = float(os.environ.get("DW_SIM_SPEED") or sim["speed"])
+        return sim["epoch_start"] + (time.time() - self._start_real) * speed
 
     def register(self, account_id: str, declared_use: str | None, quota: int | None) -> None:
         self.accounts[account_id] = Account(declared_use, quota)
