@@ -133,7 +133,8 @@ class AccountState:
     evidence: list[Evidence] = field(default_factory=list)
     features: dict[str, float] = field(default_factory=dict)
     contributions: dict[str, float] = field(default_factory=dict)
-    score: Optional[float] = None
+    score: Optional[float] = None                                 # learned model score
+    rules_level: Optional[str] = None                             # rules score level: normal, review, block
     state: AccountStateName = "insufficient"
     campaign_id: Optional[str] = None
     score_history: list[tuple[float, float]] = field(default_factory=list)  # (sim_time, score)

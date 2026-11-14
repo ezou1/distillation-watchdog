@@ -34,11 +34,19 @@ def within_quota(declared_use: Optional[str], quota: Optional[int], n_requests: 
 
 def decide(n_requests: int, score: Optional[float], thresholds: Optional[dict[str, float]],
            campaign_state: Optional[str] = None, declared_use: Optional[str] = None,
-           quota: Optional[int] = None) -> AccountStateName:
-    """Return the state of one account."""
+           quota: Optional[int] = None, rules_level: Optional[str] = None,
+           model_complete: bool = True) -> AccountStateName:
+    """Return the state of one account: the most severe of the model level, the rules level, and the campaign.
+
+    `model_complete=False` (a model feature is missing, for example the context model service did not answer):
+    the model level is at most "review". The rules and the campaign can still block.
+    """
     if within_quota(declared_use, quota, n_requests):
         return "disclosed"
-    level = worst(score_level(score, thresholds), campaign_state or "normal")
+    model_level = score_level(score, thresholds)
+    if not model_complete and model_level == "block":
+        model_level = "review"
+    level = worst(worst(model_level, rules_level or "normal"), campaign_state or "normal")
     if declared_use:
         level = worst(level, "review")
     if level == "normal" and n_requests < CFG["account"]["min_requests"]:

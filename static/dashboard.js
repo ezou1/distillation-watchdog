@@ -547,7 +547,6 @@ async function refreshCampaignDetail() {
   $("cmp-view").hidden = false;
   $("c-name").innerHTML = `Campaign ${esc(c.id)} ${badge(c.state)}`;
   $("c-meta").textContent = `${fmtNum(c.size ?? members.length)} accounts, score ${fmtNum(c.score)}`;
-  $("c-template").textContent = c.template || "(no template)";
   $("c-members").innerHTML = members.map((m) => `<tr class="click row-${esc(m.state)}" data-acct="${esc(m.id)}">
       <td><b>${esc(m.pseudonym)}</b></td><td>${badge(m.state)}</td><td class="num">${typeof m.score === "number" ? m.score.toFixed(2) : "-"}</td></tr>`).join("")
     || '<tr><td colspan="3" class="muted">No members.</td></tr>';

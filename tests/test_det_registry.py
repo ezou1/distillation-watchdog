@@ -6,12 +6,16 @@ import json
 import time
 from pathlib import Path
 
+import pytest
+
+from dw.common import context
 from dw.common.schema import AccountState, DetectorView, Evidence, Message, RequestEvent
 from dw.watchdog.detectors import build_detectors
 from dw.watchdog.detectors.base import Detector, make_view
+from fake_scorer import FakeScorer
 
 FIXTURES = Path(__file__).parent / "fixtures"
-PREFIXES = ["d1_", "d2_", "d3_", "d4_", "d5_", "d6_", "d7_"]
+PREFIXES = ["d1_", "d2_", "d3_", "d4_", "d6_", "d7_"]
 
 
 def load_events() -> list[RequestEvent]:
@@ -68,37 +72,36 @@ def test_registry_names_and_feature_prefixes() -> None:
     for acct in accounts.values():
         for det in dets:
             feats = det.features(acct)
-            assert 3 <= len(feats) <= 8
+            assert 2 <= len(feats) <= 8
             assert all(k.startswith(det.name[:3]) for k in feats)
             assert all(isinstance(v, float) for v in feats.values())
     assert all(e.summary.endswith(".") and e.request_ids for e in evidence)
 
 
-def test_neutral_models_give_zero_model_features() -> None:
+def test_without_models_the_model_features_are_neutral_or_absent(monkeypatch: pytest.MonkeyPatch) -> None:
+    """No D3 topic model: topic entropy 0. No context-model service: the D4 text and D6 features are absent."""
+    monkeypatch.setattr(context, "_SCORER", FakeScorer(cached=False, up=False))
     dets = build_detectors(None)
     accounts, _ = replay(load_events(), dets)
     for acct in accounts.values():
         feats = all_features(dets, acct)
         assert feats["d3_topic_entropy"] == 0.0
-        assert feats["d4_elicit_max"] == 0.0
-        assert feats["d6_fake_prob_mean"] == 0.0
+        assert "d4_elicit_max" not in feats and "d4_mean_temp" in feats
+        assert not any(k.startswith("d6_") for k in feats)
 
 
-def test_attack_accounts_have_redundancy_and_fake_env_signal() -> None:
+def test_attack_accounts_have_redundancy_and_engagement_signal() -> None:
     dets = build_detectors(None)
     accounts, _ = replay(load_events(), dets)
     labels = load_labels()
     feats = {a: all_features(dets, s) for a, s in accounts.items()}
     by = lambda persona, k: [feats[a][k] for a, l in labels.items() if l["persona"] == persona]  # noqa: E731
     assert min(by("hydra", "d1_dup_rate")) > max(by("solo_dev", "d1_dup_rate"))
-    assert min(by("fake_env", "d6_contradictions_per_100")) > 0
-    assert max(by("solo_dev", "d6_contradictions_per_100")) == 0
-    assert max(by("benchmark_runner", "d6_contradictions_per_100")) == 0
     assert min(by("solo_dev", "d2_followup_rate")) > max(by("hydra", "d2_followup_rate"))
     assert by("saas_app", "d7_distinct_users")[0] == 7.0
 
 
-def test_detectors_do_not_read_assistant_prose() -> None:
+def test_detectors_do_not_read_assistant_prose(fake_context_scorer: FakeScorer) -> None:
     """The same event with and without a marker in assistant prose gives the same evidence and features."""
     marker = "SECRET-ASSISTANT-PROSE-7f3a"
     base = [Message(role="user", text="Fix parse() in <REPO>/a.py"),
@@ -120,8 +123,9 @@ def test_detectors_do_not_read_assistant_prose() -> None:
 
     (summaries, feats), other = run(marker), run("Something else entirely.")
     assert (summaries, feats) == other
-    assert any("x = 1" in s for s in summaries)       # the D6 contradiction is still found
+    assert "d6_fake_prob_mean" in feats and "d4_elicit_max" in feats
     assert not any(marker in s for s in summaries)
+    assert fake_context_scorer.asked and not any(marker in t for t in fake_context_scorer.asked)
 
 
 def test_detector_view_has_no_private_fields() -> None:

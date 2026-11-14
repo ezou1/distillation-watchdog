@@ -89,9 +89,18 @@ def varying(X: np.ndarray, names: list[str]) -> list[int]:
     return [i for i in range(len(names)) if std[i] >= limit * max(1.0, abs(mean[i]))]
 
 
+def model_names(rows: Sequence[FeatureRow]) -> list[str]:
+    """The features of the learned model: only the detector groups in account.model_groups."""
+    groups = set(CFG["account"]["model_groups"])
+    return [n for n in feature_names(rows) if n.split("_")[0] in groups]
+
+
 def fit(rows: Sequence[FeatureRow], labels: Sequence[int], names: list[str] | None = None,
-        C: float | None = None) -> LogitModel:
-    """Fit a standardized logistic regression. Labels: 1 = attack, 0 = normal. Constant features are left out."""
+        C: float | None = None, weights: Sequence[float] | None = None) -> LogitModel:
+    """Fit a standardized logistic regression. Labels: 1 = attack, 0 = normal. Constant features are left out.
+
+    `weights`: one weight per row (snapshot rows of one account share the weight 1 / number of snapshots).
+    """
     names = names or feature_names(rows)
     X = to_matrix(rows, names)
     keep = varying(X, names)
@@ -102,7 +111,8 @@ def fit(rows: Sequence[FeatureRow], labels: Sequence[int], names: list[str] | No
     scale[scale == 0] = 1.0
     clf = LogisticRegression(C=C or CFG["account"]["logreg_C"], class_weight=CFG["account"]["class_weight"],
                              max_iter=2000)
-    clf.fit(_clip((X - mean) / scale), np.asarray(labels, dtype=int))
+    clf.fit(_clip((X - mean) / scale), np.asarray(labels, dtype=int),
+            sample_weight=None if weights is None else np.asarray(weights, dtype=float))
     return LogitModel(names=names, mean=mean, scale=scale, coef=clf.coef_[0].copy(),
                       intercept=float(clf.intercept_[0]))
 

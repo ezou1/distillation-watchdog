@@ -63,7 +63,7 @@ def test_accounts_never_show_labels(fed) -> None:
         assert word not in body
     rows = json.loads(body)["accounts"]
     assert len(rows) == 20
-    assert set(rows[0]) == {"id", "pseudonym", "you", "score", "state", "requests", "campaign_id", "reasons",
+    assert set(rows[0]) == {"id", "pseudonym", "you", "score", "rules_level", "state", "requests", "campaign_id", "reasons",
                             "history"}
     assert rows[0]["pseudonym"].startswith("acct-") and rows[0]["score"] >= rows[-1]["score"]
     blocked = client.get("/api/accounts?state=block").json()["accounts"]
@@ -102,7 +102,7 @@ def test_campaigns_graph_and_casefile(fed, monkeypatch) -> None:
         assert set(camps[0]) == {"id", "size", "score", "state", "mean_member_score", "mean_edge_weight",
                                  "top_edge_types"}
         d = client.get(f"/api/campaigns/{cid}").json()
-        assert {"members", "edges", "template", "evidence"} <= set(d)
+        assert {"members", "edges", "evidence"} <= set(d)
         assert client.get(f"/api/evidence/{d['evidence'][0]['id']}").status_code == 200
         monkeypatch.setenv("DW_LLM_OFFLINE", "1")
         cf = client.post(f"/api/campaigns/{cid}/casefile").json()

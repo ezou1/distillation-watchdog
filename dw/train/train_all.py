@@ -69,65 +69,61 @@ def train_topics(train: list[Session]) -> dict[str, Any]:
     return {"prompts": len(prompts), "k": int(model.n_clusters)}
 
 
-def train_elicitation(train: list[Session], val: list[Session]) -> dict[str, Any]:
+def keyword_baseline(val: list[Session]) -> dict[str, Any]:
+    """D4 keyword baseline (a regex of the most frequent bank A phrases). The D4 text model is the context model."""
     bank_a = load_bank("bank_a")
-    rng = random.Random(CFG["split"]["seed"])
-    tr_prompts = rng.sample([first_user(s) for s in train if first_user(s)], k=min(TCFG["elicit_prompts"], len(train)))
-    va_prompts = [first_user(s) for s in val if first_user(s)][: TCFG["elicit_prompts"] // 3]
-    x_tr, y_tr = elicitation_set(tr_prompts, bank_a, seed=1)
-    x_va, y_va = elicitation_set(va_prompts, bank_a, seed=2)
-    model = tr.fit_elicitation(x_tr, y_tr)
-    tr.save_model(model, MODELS, "d4")
     pattern = tr.keyword_baseline(bank_a["elicit"])
     (MODELS / "d4_keywords.txt").write_text(pattern.pattern)
-    return {"train_n": len(x_tr), "val": tr.evaluate_classifier(model, x_va, y_va),
-            "val_keyword": tr.evaluate_keyword(pattern, x_va, y_va)}
+    va_prompts = [first_user(s) for s in val if first_user(s)][: TCFG["elicit_prompts"] // 3]
+    x_va, y_va = elicitation_set(va_prompts, bank_a, seed=2)
+    return {"val_keyword": tr.evaluate_keyword(pattern, x_va, y_va)}
 
 
-def real_tool_outputs(sessions: list[Session], limit: int, seed: int) -> list[str]:
-    outs = [m.text for s in sessions for m in s.messages if m.role == "tool_result" and m.text.strip()]
-    random.Random(seed).shuffle(outs)
-    return outs[:limit]
+def context_model_metrics() -> dict[str, Any] | None:
+    """Validation metrics of the context model (written by scripts/context_train.py on the GPU machine)."""
+    p = MODELS / "context_metrics.json"
+    if not p.exists():
+        return None
+    m = json.loads(p.read_text())
+    return {"model": m.get("model"), "train_n": m.get("train_n"), "val_n": m.get("val_n"), "best": m.get("best")}
 
 
-def fake_outputs(split: str) -> list[str]:
-    rows = [json.loads(x) for x in open(path("synth") / "fake_tool_outputs.jsonl", encoding="utf-8")]
-    cap = CFG["normalize"]["max_tool_chars"]
-    return [r["fake_text"][:cap] for r in rows if r["split"] == split and r["fake_text"].strip()]
+Snapshot = tuple[str, int, dict[str, float]]          # (account_id, request count, features)
 
 
-def train_realism(train: list[Session], val: list[Session]) -> dict[str, Any]:
-    """Positives: LLM-written outputs. Negatives: real outputs from both sources (same split)."""
-    fake_tr, fake_va = fake_outputs("train"), fake_outputs("val")
-    real_tr = real_tool_outputs(train, TCFG["realism_neg_ratio"] * len(fake_tr), seed=3)
-    real_va = real_tool_outputs(val, TCFG["realism_neg_ratio"] * len(fake_va), seed=4)
-    model = tr.fit_realism(fake_tr + real_tr, [1] * len(fake_tr) + [0] * len(real_tr))
-    tr.save_model(model, MODELS, "d6")
-    return {"train_pos": len(fake_tr), "train_neg": len(real_tr),
-            "val": tr.evaluate_classifier(model, fake_va + real_va, [1] * len(fake_va) + [0] * len(real_va))}
+def scenario_features(split: str, seed: int, training: bool, record: bool) -> tuple[dict, dict, list, list]:
+    """Run one scenario offline with score=False.
 
-
-def scenario_features(split: str, seed: int, training: bool, record: bool) -> tuple[dict, dict, list]:
-    """Run one scenario offline with score=False. Return features, labels, and per-request rows."""
+    Return the final feature table, the labels (full label dicts), the per-request rows, and the snapshot rows.
+    Snapshot rows are the features at the account.snapshot_requests counts and at the end, so the model also
+    learns from partial account histories (it decides on partial histories when it runs).
+    """
     scen = build_scenario(split, seed, TCFG["scenario_scale"], training=training)
-    worker = Worker(models_dir=MODELS, score=False, record_requests=record)
+    worker = Worker(models_dir=MODELS, score=False, record_requests=record, snapshots=True)
     run_offline(scen, worker)
     worker.rescore()
     table = {a: f for a, f in worker.feature_table().items()
              if worker.accounts[a].n_requests >= CFG["account"]["min_requests"] and a in scen.labels}
-    labels = {a: int(scen.labels[a]["role"] == "attack") for a in table}
+    labels = {a: scen.labels[a] for a in table}
     rows = [(f, int(scen.labels[a]["role"] == "attack")) for _, a, f in worker.request_rows if a in scen.labels] if record else []
-    save_features(f"{split}_{seed}", table, {a: scen.labels[a] for a in table})
-    return table, labels, rows
+    snaps: list[Snapshot] = [(a, n, f) for a, n, f in worker.snapshots if a in table and n >= CFG["account"]["min_requests"]]
+    last = {a: n for a, n, _ in snaps}
+    snaps += [(a, worker.accounts[a].n_requests, table[a]) for a in table if last.get(a) != worker.accounts[a].n_requests]
+    save_features(f"{split}_{seed}", table, labels, snaps)
+    return table, labels, rows, snaps
 
 
-def save_features(name: str, table: dict[str, dict[str, float]], labels: dict[str, dict[str, str]]) -> None:
-    """Cache an account feature table with its labels for the leakage controls."""
+def save_features(name: str, table: dict[str, dict[str, float]], labels: dict[str, dict[str, Any]],
+                  snapshots: list[Snapshot] | None = None) -> None:
+    """Cache an account feature table with its labels (and snapshot rows) for the leakage controls."""
     FEATURES.mkdir(parents=True, exist_ok=True)
-    (FEATURES / f"{name}.json").write_text(json.dumps({"features": table, "labels": labels}))
+    data: dict[str, Any] = {"features": table, "labels": labels}
+    if snapshots is not None:
+        data["snapshots"] = [[a, n, f] for a, n, f in snapshots]
+    (FEATURES / f"{name}.json").write_text(json.dumps(data))
 
 
-def _scenario_job(args: tuple[str, int, bool, bool]) -> tuple[dict, dict, list]:
+def _scenario_job(args: tuple[str, int, bool, bool]) -> tuple[dict, dict, list, list]:
     embed.load_cache(EMB_CACHE)
     out = scenario_features(*args)
     split, seed = args[0], args[1]
@@ -135,7 +131,7 @@ def _scenario_job(args: tuple[str, int, bool, bool]) -> tuple[dict, dict, list]:
     return out
 
 
-def run_scenarios(jobs: list[tuple[str, int, bool, bool]]) -> list[tuple[dict, dict, list]]:
+def run_scenarios(jobs: list[tuple[str, int, bool, bool]]) -> list[tuple[dict, dict, list, list]]:
     """Run the scenarios in parallel processes (spawn: no forked ONNX threads). Merge their embedding caches."""
     import multiprocessing as mp
     with mp.get_context("spawn").Pool(min(len(jobs), TCFG.get("processes", 4))) as pool:
@@ -147,19 +143,91 @@ def run_scenarios(jobs: list[tuple[str, int, bool, bool]]) -> list[tuple[dict, d
     return results
 
 
+def snapshot_rows(snaps: list[Snapshot], labels: dict[str, dict[str, Any]]) -> tuple[list, list, list, list]:
+    """Rows, labels (1 = attack), weights (each account counts once), and account IDs of snapshot rows."""
+    count: dict[str, int] = {}
+    for a, _, _ in snaps:
+        count[a] = count.get(a, 0) + 1
+    rows = [f for _, _, f in snaps]
+    ys = [int(labels[a]["role"] == "attack") for a, _, _ in snaps]
+    weights = [1.0 / count[a] for a, _, _ in snaps]
+    return rows, ys, weights, [a for a, _, _ in snaps]
+
+
+def account_max(values: list[float], ids: list[str]) -> dict[str, float]:
+    """The largest value per account over its snapshot rows (the state is decided again at every snapshot)."""
+    out: dict[str, float] = {}
+    for a, v in zip(ids, values):
+        out[a] = max(out.get(a, v), v)
+    return out
+
+
+def group_gate(train: tuple[list, list, list, list], val: tuple[list, list, list, list],
+               val_labels: dict[str, dict[str, Any]], rules_thr: dict[str, float]) -> dict[str, Any]:
+    """Validation check of the detector groups in the learned model (is D2 or D3 worth keeping?).
+
+    For each variant: validation AUC and recall at the block threshold of the model alone and of the
+    decision (model or rules), and the source AUC of normal accounts (Open-SWE against SWE-chat, near 0.5 is good).
+    """
+    from dw.watchdog import rules
+    groups = list(CFG["account"]["model_groups"])
+    variants = {"all": groups, **{f"without_{g}": [x for x in groups if x != g] for g in ("d2", "d3") if g in groups}}
+    if "d2" in groups and "d3" in groups:
+        variants["without_d2_d3"] = [x for x in groups if x not in ("d2", "d3")]
+    t_rows, t_y, t_w, _ = train
+    v_rows, _, _, v_ids = val
+    accts = sorted(set(v_ids))
+    y = [int(val_labels[a]["role"] == "attack") for a in accts]
+    rules_max = account_max([rules.value(r) for r in v_rows], v_ids)
+    rules_block = {a: rules_max[a] >= rules_thr["block"] for a in accts}
+    out: dict[str, Any] = {}
+    for name, keep in variants.items():
+        names = [n for n in am.feature_names(t_rows) if n.split("_")[0] in keep]
+        model = am.fit(t_rows, t_y, names=names, weights=t_w)
+        best = account_max(model.predict_many(v_rows), v_ids)
+        scores = [best[a] for a in accts]
+        thr = am.choose_thresholds(scores, y)["block"]
+        model_block = {a: best[a] >= thr for a in accts}
+        pos = [a for a, yy in zip(accts, y) if yy]
+        neg = [a for a, yy in zip(accts, y) if not yy]
+        ose = [best[a] for a in neg if val_labels[a].get("swechat_frac", 1.0) < 0.5]
+        swe = [best[a] for a in neg if val_labels[a].get("swechat_frac", 1.0) >= 0.5]
+        out[name] = {
+            "groups": keep, "features": len(model.names), "val_auc": _auc(y, scores),
+            "model_recall_at_block": round(sum(model_block[a] for a in pos) / len(pos), 4) if pos else None,
+            "decision_recall": round(sum(model_block[a] or rules_block[a] for a in pos) / len(pos), 4) if pos else None,
+            "decision_false_blocks": int(sum(model_block[a] or rules_block[a] for a in neg)),
+            "normal_accounts": len(neg),
+            "source_auc_normal": _auc([1] * len(ose) + [0] * len(swe), ose + swe) if ose and swe else None}
+    return out
+
+
 def train_account_models() -> dict[str, Any]:
-    rows: list[dict[str, float]] = []
-    labels: list[int] = []
-    req_rows: list[tuple[dict[str, float], int]] = []
+    from dw.watchdog import rules
     jobs = [("train", seed, True, True) for seed in CFG["account"]["train_seeds"]]
     jobs.append(("val", CFG["account"]["val_seed"], False, True))
-    *train_results, (va_table, va_lab, va_req) = run_scenarios(jobs)
-    for table, lab, rr in train_results:
-        rows += list(table.values())
-        labels += [lab[a] for a in table]
+    *train_results, (va_table, va_lab, va_req, va_snaps) = run_scenarios(jobs)
+    train_snaps: list[Snapshot] = []
+    train_labels: dict[str, dict[str, Any]] = {}
+    req_rows: list[tuple[dict[str, float], int]] = []
+    for _table, lab, rr, snaps in train_results:
+        train_snaps += snaps
+        train_labels.update(lab)
         req_rows += rr
-    model = am.fit(rows, labels)
-    thresholds = am.set_thresholds(model, list(va_table.values()), [va_lab[a] for a in va_table])
+    train = snapshot_rows(train_snaps, train_labels)
+    val = snapshot_rows(va_snaps, va_lab)
+    accts = sorted(set(val[3]))
+    y_val = [int(va_lab[a]["role"] == "attack") for a in accts]
+
+    # rules score: thresholds on the largest rules value of each validation account
+    rules_max = account_max([rules.value(r) for r in val[0]], val[3])
+    rules_thr = rules.fit_thresholds([rules_max[a] for a in accts], y_val)
+    rules.save(rules_thr, MODELS)
+
+    # learned model: snapshot rows of the train scenarios, only the detector groups in account.model_groups
+    model = am.fit(train[0], train[1], names=am.model_names(train[0]), weights=train[2])
+    val_best = account_max(model.predict_many(val[0]), val[3])
+    model.thresholds = am.choose_thresholds([val_best[a] for a in accts], y_val)
     am.save(model, MODELS / am.ACCOUNT_MODEL_FILE)
 
     rng = random.Random(5)
@@ -168,10 +236,12 @@ def train_account_models() -> dict[str, Any]:
     req_model = am.fit([r for r, _ in req_rows], [y for _, y in req_rows])
     req_model.thresholds = {"request": request_threshold(req_model, va_req)}
     am.save(req_model, MODELS / am.REQUEST_MODEL_FILE)
-    val_scores = model.predict_many(list(va_table.values()))
-    return {"train_accounts": len(rows), "train_attack": sum(labels), "val_accounts": len(va_table),
-            "thresholds": thresholds, "coefficients": am.coefficients(model),
-            "val_auc": _auc([va_lab[a] for a in va_table], val_scores),
+    return {"train_accounts": len(set(train[3])), "train_snapshot_rows": len(train[0]),
+            "train_attack": sum(int(train_labels[a]["role"] == "attack") for a in set(train[3])),
+            "val_accounts": len(accts), "thresholds": model.thresholds, "rules_thresholds": rules_thr,
+            "rules_feature": CFG["rules"]["feature"], "coefficients": am.coefficients(model),
+            "val_auc": _auc(y_val, [val_best[a] for a in accts]),
+            "group_gate": group_gate(train, val, va_lab, rules_thr),
             "request_rows": len(req_rows), "request_coefficients": am.coefficients(req_model)}
 
 
@@ -213,8 +283,8 @@ def main() -> None:
     metrics: dict[str, Any] = {}
     metrics["d3_topics"] = timed("d3_topics", lambda: train_topics(train), compute)
     embed.save_cache(EMB_CACHE)
-    metrics["d4_elicitation"] = timed("d4_elicitation", lambda: train_elicitation(train, val), compute)
-    metrics["d6_realism"] = timed("d6_realism", lambda: train_realism(train, val), compute)
+    metrics["d4_keyword_baseline"] = timed("d4_keyword_baseline", lambda: keyword_baseline(val), compute)
+    metrics["context_model"] = context_model_metrics()
     metrics["account_model"] = timed("account_model", train_account_models, compute)
     embed.save_cache(EMB_CACHE)
     compute["train_total_s"] = round(time.time() - t0, 1)

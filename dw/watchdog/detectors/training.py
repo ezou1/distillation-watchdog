@@ -1,4 +1,6 @@
-"""Fit, evaluate, save, and load the small learned models of the detectors (D3 topics, D4 elicitation, D6 realism).
+"""Fit, save, and load the D3 topic model, and build the D4 keyword baseline.
+
+The text parts of D4 and D6 use the context model (dw/common/context.py, scripts/context_train.py).
 
 The functions take plain lists of texts and labels. `dw/train/train_all.py` calls them.
 """
@@ -13,16 +15,13 @@ from typing import Any
 import joblib
 import numpy as np
 from sklearn.cluster import KMeans
-from sklearn.feature_extraction.text import ENGLISH_STOP_WORDS, TfidfVectorizer
-from sklearn.linear_model import LogisticRegression
-from sklearn.metrics import precision_recall_fscore_support, roc_auc_score
-from sklearn.pipeline import FeatureUnion, Pipeline
-from sklearn.preprocessing import FunctionTransformer
+from sklearn.feature_extraction.text import ENGLISH_STOP_WORDS
+from sklearn.metrics import precision_recall_fscore_support
 
 from dw.common.embed import embed
 from dw.watchdog.detectors.common import DCFG
 
-MODEL_FILES = {"d3": "d3_kmeans.pkl", "d4": "d4_elicit.pkl", "d6": "d6_realism.pkl"}
+MODEL_FILES = {"d3": "d3_kmeans.pkl"}
 
 
 def fit_topics(first_prompts: list[str], k: int | None = None) -> KMeans:
@@ -32,36 +31,6 @@ def fit_topics(first_prompts: list[str], k: int | None = None) -> KMeans:
         first_prompts = random.Random(DCFG["d3"]["seed"]).sample(first_prompts, n)
     k = min(k or DCFG["d3"]["kmeans_k"], len(first_prompts))
     return KMeans(n_clusters=k, n_init=4, random_state=DCFG["d3"]["seed"]).fit(embed(first_prompts))
-
-
-def fit_elicitation(texts: list[str], labels: list[int]) -> Pipeline:
-    """Fit word 1-2 gram + char 3-5 gram TF-IDF and logistic regression on user texts (1 = elicitation)."""
-    features = FeatureUnion([
-        ("word", TfidfVectorizer(analyzer="word", ngram_range=(1, 2), sublinear_tf=True, max_features=100_000)),
-        ("char", TfidfVectorizer(analyzer="char_wb", ngram_range=(3, 5), sublinear_tf=True, max_features=200_000)),
-    ])
-    return _fit(features, texts, labels, DCFG["d4"]["lr_C"])
-
-
-def fit_realism(texts: list[str], labels: list[int]) -> Pipeline:
-    """Fit char 3-5 gram TF-IDF and logistic regression on tool outputs (1 = LLM-written, 0 = real)."""
-    features = Pipeline([
-        ("cut", FunctionTransformer(cut_tool_output)),
-        ("tfidf", TfidfVectorizer(analyzer="char_wb", ngram_range=(3, 5), sublinear_tf=True, max_features=200_000)),
-    ])
-    return _fit(features, texts, labels, DCFG["d6"]["lr_C"])
-
-
-def cut_tool_output(texts: list[str]) -> list[str]:
-    """Keep the first detectors.d6.realism_chars characters of each tool output (training and inference)."""
-    n = DCFG["d6"]["realism_chars"]
-    return [t[:n] for t in texts]
-
-
-def _fit(features: Any, texts: list[str], labels: list[int], c: float) -> Pipeline:
-    model = Pipeline([("tfidf", features),
-                      ("lr", LogisticRegression(C=c, max_iter=2000, class_weight="balanced"))])
-    return model.fit(texts, labels)
 
 
 def keyword_baseline(bank_a_texts: list[str], top: int | None = None) -> re.Pattern[str]:
@@ -84,12 +53,6 @@ def keyword_baseline(bank_a_texts: list[str], top: int | None = None) -> re.Patt
             break
     return re.compile(r"\b(?:" + "|".join(re.escape(c).replace(r"\ ", r"\s+") for c in chosen) + r")\b",
                       re.IGNORECASE)
-
-
-def evaluate_classifier(model: Any, texts: list[str], labels: list[int], threshold: float = 0.5) -> dict[str, float]:
-    """Return AUC, precision, recall, F1 and false positive rate of a text classifier."""
-    scores = model.predict_proba(texts)[:, 1]
-    return _metrics(labels, scores >= threshold) | {"auc": float(roc_auc_score(labels, scores))}
 
 
 def evaluate_keyword(pattern: re.Pattern[str], texts: list[str], labels: list[int]) -> dict[str, float]:

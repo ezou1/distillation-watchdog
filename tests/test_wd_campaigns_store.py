@@ -7,7 +7,7 @@ from collections import Counter
 from pathlib import Path
 
 from dw.common.schema import Message
-from dw.watchdog.campaigns import Profile, build_graph, find_campaigns, schema_rarity, simple_skeleton_lines
+from dw.watchdog.campaigns import Profile, build_graph, find_campaigns, schema_rarity
 from dw.watchdog.store import EventStore
 from test_wd_stubs import make_event
 
@@ -16,8 +16,7 @@ def _campaign_member(i: int) -> Profile:
     # Same 4 tasks, bursts in the same minutes, a rare tool schema.
     minutes = Counter({m: 5 for m in (10, 11, 30, 31, 50)})
     minutes[5 + i] += 1
-    return Profile(tasks={f"task{k}": f"r-{i}-{k}" for k in range(4)}, skeletons={"sk1": f"r-{i}-0"},
-                   minutes=minutes, schemas={"custom_rare"})
+    return Profile(tasks={f"task{k}": f"r-{i}-{k}" for k in range(4)}, minutes=minutes, schemas={"custom_rare"})
 
 
 def _normal(i: int) -> Profile:
@@ -39,7 +38,7 @@ def test_campaign_is_found_and_blocks_low_score_members() -> None:
     g = build_graph(cands, profiles, scores)
     assert g.has_edge("atk0", "atk1") and not g.has_edge("dev0", "dev1")
     edge = g.edges["atk0", "atk1"]
-    assert set(edge["types"]) == {"shared_task", "shared_skeleton", "sync", "rare_schema"}
+    assert set(edge["types"]) == {"shared_task", "sync", "rare_schema"}
     assert "4 shared tasks" in edge["evidence"]
     numbers = itertools.count(1)
     camps = find_campaigns(g, profiles, scores, {}, lambda: next(numbers))
@@ -62,12 +61,9 @@ def test_no_campaign_below_min_size() -> None:
     assert find_campaigns(g, profiles, scores, {}, lambda: 1) == {}
 
 
-def test_schema_rarity_and_skeleton() -> None:
+def test_schema_rarity() -> None:
     rarity = schema_rarity(_profiles())
     assert rarity["standard_agent"] < 0.3 < rarity["custom_rare"]
-    a = simple_skeleton_lines("Solve this issue in org/repo-1: \"crash on 3 inputs\" in parse_value now")
-    b = simple_skeleton_lines("Solve this issue in other/thing: \"wrong output\" in load_file now")
-    assert a == b
 
 
 def test_event_store_round_trip(tmp_path: Path) -> None:

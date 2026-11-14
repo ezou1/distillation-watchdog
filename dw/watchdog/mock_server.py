@@ -75,28 +75,6 @@ def fs_contradiction(ev: dict) -> Optional[tuple[int, str]]:
     return None
 
 
-def template_of(texts: list[str]) -> str:
-    """Invert a task template: keep the common word prefix and suffix, mark the rest."""
-    words = [t.split() for t in texts if t]
-    if not words:
-        return ""
-    if len(words) == 1:
-        return texts[0]
-    pre: list[str] = []
-    for col in zip(*words):
-        if all(w == col[0] for w in col):
-            pre.append(col[0])
-        else:
-            break
-    suf: list[str] = []
-    for col in zip(*[list(reversed(w)) for w in words]):
-        if all(w == col[0] for w in col) and len(pre) + len(suf) < min(len(w) for w in words):
-            suf.append(col[0])
-        else:
-            break
-    return " ".join(pre + ["{task}"] + list(reversed(suf)))
-
-
 class MockWatchdog:
     """In-memory state of the mock. One tick replays one batch of fixture events."""
 
@@ -378,12 +356,11 @@ class MockWatchdog:
                 for k, v in e["types"].items():
                     type_tot[k] += v
             shared = set.intersection(*[tasks[a] for a in members]) if members else set()
-            texts = sorted({first_user_text(e) for a in members for e in self.seen[a][:5]})
             c = {"id": cid, "member_ids": members, "size": len(members), "score": score,
                  "state": "block" if score >= CAMPAIGN_BLOCK else "review",
                  "mean_member_score": round(mean_score, 3), "mean_edge_weight": round(mean_w, 2),
                  "top_edge_types": [k for k, _ in sorted(type_tot.items(), key=lambda kv: -kv[1])][:3],
-                 "edges": m_edges, "template": template_of(texts),
+                 "edges": m_edges,
                  "evidence": [{"id": f"ev-c{cid[4:]}01", "detector": "campaign", "account_id": None,
                                "request_ids": [self.seen[members[0]][0]["request_id"]], "message_index": 0,
                                "summary": f"{len(members)} accounts share tasks; {len(shared)} tasks are common to all.",
@@ -462,7 +439,7 @@ class MockWatchdog:
         members = [{"id": a, "pseudonym": self.accounts[a]["pseudonym"], "score": self.accounts[a]["score"],
                     "state": self.accounts[a]["state"]} for a in c["member_ids"]]
         return {"id": cid, "size": c["size"], "score": c["score"], "state": c["state"], "members": members,
-                "edges": c["edges"], "template": c["template"], "evidence": c["evidence"]}
+                "edges": c["edges"], "evidence": c["evidence"]}
 
     def graph(self) -> dict:
         ids = {e["source"] for e in self.edges} | {e["target"] for e in self.edges}
@@ -484,7 +461,6 @@ class MockWatchdog:
             text = (f"## Summary\nThe campaign {cid} has {c['size']} accounts and the score {c['score']} [{ev[0]['id']}].\n\n"
                     f"## Findings\n- The accounts {names} send the same tasks [{ev[0]['id']}].\n"
                     f"- The links between the accounts are strong [{ev[1]['id']}].\n\n"
-                    f"## Template\nThe tasks follow one template: `{c['template']}` [{ev[0]['id']}].\n\n"
                     f"## Recommendation\nBlock all member accounts. Keep the evidence for review.\n")
         else:
             acc = self.account(cid)

@@ -48,6 +48,14 @@ Start time (UTC): 2026-11-14T08:02:05Z (see `.build_clock`).
 - D-40. Falsely blocked normal accounts: accepted as a limit. A real deployment uses a human review and an appeal process.
 - D-41. Smoke test clock. The lab clock used `sim.speed` (600), but the smoke test sent traffic at speed 3000. Simulation time was compressed five times, so the time features (concurrency, rate) were wrong. The lab now reads `DW_SIM_SPEED`, and `scripts/smoke.sh` sets it to its speed. The smoke test also waits until the watchdog queue is empty before the checks.
 - D-42. Robust account model. Live traffic over HTTP arrives slightly out of order, so hydra accounts showed some branches (`d1_branch_factor` about 1.2). In all training scenarios this feature was constant (1.0, std 0.001). The standardized value was about 180, and the score of blocked hydra accounts went to 0. The smoke test released all blocks. Changes: `fit()` leaves out features that are constant in training (`account.min_rel_std`), and standardized values are clipped to +-5 (`account.z_clip`) in training and scoring. The offline evaluation did not show this problem, because the offline replay has no reordering.
+- D-43. D5 removed (user decision). In this data, the template-line count measured the prompt length of the source (GitHub issue texts), not templates. The campaign graph also lost its template-line edge and the campaign `template` field. This deviates from B13, which keeps the skeleton count.
+- D-44. Rules score (user decision). D1 duplicates are a rules score: the share of requests that repeat an earlier context of the account (`rules.feature`). Block and review thresholds come from the largest value of each validation account (`models/rules.json`). D7 is only an exoneration: many distinct `user` values or a declared use cap the rules level at "review". The account state is the most severe of the rules level, the learned-model level, and the campaign state. Rules-flagged accounts are campaign candidates.
+- D-45. Snapshot training. The learned model decided on partial account histories but was trained on full histories, so D3 and D7 worked backwards (attackers blocked after one or two sessions showed one repository). The worker now records feature snapshots at 30, 60, 120, 250, 500, and 1,000 requests and at the end. The model is fitted on all snapshots, weighted so each account counts once. Thresholds use the largest score of each validation account.
+- D-46. Context model (user decision; replaces the TF-IDF classifiers of D4 and D6). A fine-tuned Qwen3-0.6B-Base sequence classifier with two tasks (`[prompt]` elicitation, `[tool]` realism), trained on a RunPod A100 (`scripts/context_train.py`). Served by `scripts/context_serve.py` on the pod's localhost, reached through an SSH tunnel (`scripts/context_tunnel.sh`, key `~/.ssh/dw_runpod`). Data fixes before training: realism negatives are real Open-SWE outputs only (the fakes exist only for Open-SWE contexts; the old classifier used both sources and learned the source); the tool call is part of the input; SAAS-wrapped prompts appear in both labels. A first data version cut long prompts to their start, which removed elicitation phrases at the end; the input now keeps the start and the end of long prompts (`head_tail`). Training and scoring use the same text functions (`dw/common/context.py`). Scores are cached on disk by model tag. Offline runs prefetch all texts of a scenario. Without the service, D4 and D6 leave their text features out (training mean).
+- D-47. Data rule exception (user decision): SWE-chat text goes to the rented GPU machine for the context model. It never goes to OpenRouter.
+- D-48. D6 shadow file system removed. In replay it found no contradictions in fake-environment sessions and most contradictions in normal SaaS sessions.
+- D-49. Validation check of the learned-model groups (validation split only; the holdout was not used). With the context model, D2 and D3 added no recall and raised the source AUC of normal accounts (Open-SWE against SWE-chat; 0.5 is ideal): all groups 0.86, without D2 and D3 0.71, D4 only 0.41. D6 alone had source AUC 0.99 and a negative coefficient: the context model gives real SWE-chat outputs almost the realism score of the fakes (median account score: solo developer 0.24, SaaS 0.25, fake environment 0.36, hydra and benchmark 0.06), because its training data has fakes only for Open-SWE contexts. The account model used this as "low realism score = Open-SWE = attack". Decision: the learned model uses D4 only. D6 runs and gives evidence, but does not score. A fix needs fake outputs for SWE-chat contexts (generated on the GPU machine).
+- D-50. Fallback without the context model. With the service down, the D4 text features were missing, the model used the training mean, and the request settings alone blocked two solo developers in the smoke test. Now a missing model feature caps the model level at "review" (`policy.decide(model_complete=False)`). The rules score and the campaigns still block. The smoke test passes with and without the service.
 
 ## Milestones
 
@@ -72,17 +80,19 @@ Start time (UTC): 2026-11-14T08:02:05Z (see `.build_clock`).
 - Stealth recall: 0.205 at account level, 0.205 after campaigns. The campaigns do not catch more stealth accounts.
 - Controls: format probe AUC 0.999 (fail), cross-harness hydra recall 0.690 against 0.561 (fail), label permutation mean AUC 0.462.
 
-## Result after D-38 and D-42 (source protections, robust model)
+## Result after phase 1 and the context model (D-43 to D-50)
 
-- Validation account AUC 0.9966. Block threshold 0.575, review threshold 0.186. Features in the model: 30 of 34.
-- Holdout: account AUC 0.952. Per-request AUC 0.928, false positive rate 0.076. Attack accounts blocked: 0.965 (was 0.892).
-- Stealth recall: 0.744 at account level, 0.769 after campaigns (was 0.205). Hydra at account level: 120 of 200 (was 138); after campaigns: 200.
-- Falsely blocked normal accounts: 5 of 64 (was 2 of 57). All are solo developers (SWE-chat). The target `account.block_max_fpr` is 0.01. Accepted as a limit (D-40).
-- Control 4: 0.6 (main) against 0.4878 (other harness). Option A: 0.6 against 0.8148 (27 accounts). Option B: 0.5244 against 0.4878 (82 accounts on each side).
-- Control 7: normal accounts AUC 0.5167 (Open-SWE against SWE-chat). Stealth: Spearman 0.1504 (p = 0.3607). No sign that the score follows the source.
-- Ablation (holdout AUC): all 0.952, real data (B10 6a) 0.7868 (was 0.923), strict real data 0.55 (was 0.801), simulator only 0.9762. Without the source shortcut in training, the real-data features separate the classes much less well. Part of their earlier power came from the session shape of the source.
-- Training: 245.6 s wall time, 452.5 s CPU time (embedding cache present).
-- Smoke test: 6 of 6 checks pass. 12 of 12 hydra accounts are blocked.
+Holdout, one run after all choices were made on validation.
+
+- Learned model (D4 only): validation AUC 0.986, holdout AUC 0.934. Rules statistic (D1) holdout AUC 0.963. Rules thresholds: block 0.233, review 0.216.
+- Blocked per persona (rules / model / account level / final): hydra 200/113/200/200 of 200; fake environment 47/22/47/47 of 47; stealth 7/16/23/23 of 39.
+- Falsely blocked normal accounts: 1 of 64 (was 5 of 64). Attack accounts blocked: 0.944 (was 0.965). Stealth recall 0.590 (was 0.769).
+- D4 context model on bank B (phrases not seen in training): precision 0.9897, recall 0.8993, false positive rate 0.0093 (the TF-IDF classifier had 0.851, 0.696, 0.122). Keyword baseline: 0.5486, 0.2707, 0.2227.
+- D6 context model on the holdout realism set: AUC 0.9426, recall 0.7771, false positive rate 0.049 (Open-SWE). It flags 0.1983 of real SWE-chat outputs (the TF-IDF classifier flagged 0.046). D6 does not score (D-49).
+- Control 4: 1.0 against 1.0; options A and B also equal. Control 7: normal accounts AUC 0.5315, stealth Spearman 0.0756 (p = 0.6474). Label permutation mean AUC 0.5692.
+- Ablation (holdout AUC): rules statistic only 0.9633, current learned groups 0.9276, strict real data 0.4885, simulator only 0.9727.
+- Smoke test: 6 of 6 with the context model, and 6 of 6 without it.
+- Training: 123.7 s wall time, 225.4 s CPU time on this machine (the context-model scores come from the GPU machine and the disk cache).
 
 ## Problems
 

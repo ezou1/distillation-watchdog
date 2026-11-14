@@ -67,6 +67,32 @@ def _account_update(acct: dict[str, Any], status: int, sim_time: float) -> None:
         acct["requests_before_block"] += 1
 
 
+def prefetch_context(scenario: Scenario, worker: Any) -> None:
+    """Score all context-model texts of the scenario in large batches before the replay.
+
+    The detectors then find each score in the cache, so the replay makes no call per message.
+    """
+    scorers = {id(s): s for d in getattr(worker, "detectors", []) if (s := getattr(d, "scorer", None)) is not None}
+    if not scorers:
+        return
+    from dw.common.chat import from_openai
+    from dw.common.context import session_texts
+    longest: dict[str, list] = {}
+    for r in scenario.requests:
+        msgs = r.body["messages"]
+        if len(msgs) > len(longest.get(r.session_ref, ())):
+            longest[r.session_ref] = msgs
+    texts = [t for msgs in longest.values() for t in session_texts(from_openai(msgs))]
+    for s in scorers.values():
+        s.score_many(texts)
+        s.save()
+
+
 def run_offline(scenario: Scenario, worker: Any) -> OfflineResult:
     """Replay the scenario through `Lab.handle()` with DirectSink(worker) and DirectBlocklist(worker)."""
-    return asyncio.run(_run(scenario, worker))
+    prefetch_context(scenario, worker)
+    result = asyncio.run(_run(scenario, worker))
+    for d in getattr(worker, "detectors", []):
+        if (s := getattr(d, "scorer", None)) is not None:
+            s.save()
+    return result

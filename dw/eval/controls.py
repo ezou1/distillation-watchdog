@@ -26,7 +26,7 @@ from dw.data.normalize import FORBIDDEN
 from dw.sim.offline import run_offline
 from dw.sim.scenario import build_scenario, load_assets
 from dw.train.train_all import EMB_CACHE, FEATURES, MODELS, _auc, save_features
-from dw.watchdog import account_model as am
+from dw.watchdog import account_model as am, rules
 from dw.watchdog.worker import Worker
 
 matplotlib.use("Agg")
@@ -35,7 +35,7 @@ import matplotlib.pyplot as plt  # noqa: E402
 KCFG = CFG["controls"]
 REPORTS = path("reports")
 POSITIVE_SOURCE = "openswe"          # probe label 1; swechat is label 0
-DETECTORS = ("d1", "d2", "d3", "d4", "d5", "d6", "d7")
+DETECTORS = ("d1", "d2", "d3", "d4", "d6", "d7")
 
 # ---------------------------------------------------------------- feature origin (control 6)
 
@@ -66,12 +66,8 @@ FEATURE_ORIGIN: dict[str, tuple[str, str]] = {
     "d4_max_effort_frac": (SIM, "reasoning_effort is a persona parameter"),
     "d4_n_gt1_rate": (SIM, "n is a persona parameter"),
     "d4_mean_temp": (SIM, "temperature is a persona parameter"),
-    "d5_template_mass": (SYNTH, "attacker templates are written assets; normal prompts are real"),
-    "d5_skeletons_per_session": (SYNTH, "attacker templates are written assets; normal prompts are real"),
-    "d5_top_skeleton_frac": (SYNTH, "attacker templates are written assets; normal prompts are real"),
-    "d6_contradictions_per_100": (SYNTH, "fake-env tool outputs are LLM-written; others are real"),
-    "d6_contradiction_session_frac": (SYNTH, "fake-env tool outputs are LLM-written; others are real"),
     "d6_fake_prob_mean": (SYNTH, "fake-env tool outputs are LLM-written; others are real"),
+    "d6_fake_high_frac": (SYNTH, "fake-env tool outputs are LLM-written; others are real"),
     "d7_req_per_active_hour": (SIM, "timing and volume come from the scheduler"),
     "d7_max_concurrent_sessions": (SIM, "timing and volume come from the scheduler"),
     "d7_mean_concurrent_sessions": (SIM, "timing and volume come from the scheduler"),
@@ -90,7 +86,7 @@ def feature_origin(name: str) -> str:
 
 def spec_real_data(name: str) -> bool:
     """BUILD.md B10 item 6(a): D1 branch features, D2, D3, D5, D6."""
-    return name.split("_")[0] in ("d2", "d3", "d5", "d6") or (name.startswith("d1_") and feature_origin(name) == REAL)
+    return name.split("_")[0] in ("d2", "d3", "d6") or (name.startswith("d1_") and feature_origin(name) == REAL)
 
 
 def ablation_subsets(names: Sequence[str]) -> dict[str, list[str]]:
@@ -100,6 +96,7 @@ def ablation_subsets(names: Sequence[str]) -> dict[str, list[str]]:
         "spec_real_data (B10 6a)": [n for n in names if spec_real_data(n)],
         "strict_real_data": [n for n in names if feature_origin(n) == REAL],
         "simulator_only": [n for n in names if feature_origin(n) == SIM],
+        "learned model groups (current)": [n for n in names if n.split("_")[0] in CFG["account"]["model_groups"]],
     }
     for det in DETECTORS:
         subsets[f"drop_{det}"] = [n for n in names if not n.startswith(det + "_")]
@@ -320,18 +317,29 @@ def holdout_table(xharness: bool, seed: int, models_dir: Path, data_dir: Path | 
     return Table.from_json(data)
 
 
-def recall_by_persona(model: am.LogitModel, table: Table) -> dict[str, dict[str, Any]]:
-    """Per attack persona: share of accounts at block and at review (score bands of the saved thresholds) and in worker state block."""
+def _rules_block(table: Table, rules_thr: dict[str, float] | None) -> list[bool]:
+    """Rules block per row (D1 statistic at or above the rules block threshold). All False without rules."""
+    if not rules_thr:
+        return [False] * len(table.rows)
+    return [rules.value(r) >= rules_thr["block"] for r in table.rows]
+
+
+def recall_by_persona(model: am.LogitModel, table: Table,
+                      rules_thr: dict[str, float] | None = None) -> dict[str, dict[str, Any]]:
+    """Per attack persona: share of accounts at block (model or rules), at review only, and in worker state block."""
     scores = model.predict_many(table.rows)
     block, review = model.thresholds["block"], model.thresholds["review"]
+    rblock = _rules_block(table, rules_thr)
     out: dict[str, dict[str, Any]] = {}
     for persona in sorted({p for p, y in zip(table.personas, table.y) if y}):
         idx = [i for i, p in enumerate(table.personas) if p == persona]
         states = [table.states[i] for i in idx if table.states[i] is not None]
         out[persona] = {
             "accounts": len(idx),
-            "recall_block": round(float(np.mean([scores[i] >= block for i in idx])), 4),
-            "share_review_only": round(float(np.mean([review <= scores[i] < block for i in idx])), 4),
+            "recall_block": round(float(np.mean([scores[i] >= block or rblock[i] for i in idx])), 4),
+            "model_recall_block": round(float(np.mean([scores[i] >= block for i in idx])), 4),
+            "rules_recall_block": round(float(np.mean([rblock[i] for i in idx])), 4),
+            "share_review_only": round(float(np.mean([review <= scores[i] < block and not rblock[i] for i in idx])), 4),
             "worker_state_block": round(float(np.mean([s == "block" for s in states])), 4) if states else None,
             "worker_state_review": round(float(np.mean([s == "review" for s in states])), 4) if states else None,
         }
@@ -354,19 +362,21 @@ def sessions_matched(seed: int, models_dir: Path, data_dir: Path | None) -> dict
 
 
 def cross_harness(model: am.LogitModel, normal: Table, xharness: Table,
-                  matched: dict[str, Table] | None = None) -> dict[str, Any]:
-    out = _cross_harness(model, normal, xharness)
+                  matched: dict[str, Table] | None = None, rules_thr: dict[str, float] | None = None) -> dict[str, Any]:
+    out = _cross_harness(model, normal, xharness, rules_thr)
     if matched:
-        out["option_a"] = {"main": out["normal"], "xharness": recall_by_persona(model, matched["xharness_matched"]),
+        out["option_a"] = {"main": out["normal"],
+                           "xharness": recall_by_persona(model, matched["xharness_matched"], rules_thr),
                            "note": "Other harness with fewer hydra accounts: same sessions per account as the main holdout."}
-        out["option_b"] = {"main": recall_by_persona(model, matched["main_small_pool"]), "xharness": out["xharness"],
+        out["option_b"] = {"main": recall_by_persona(model, matched["main_small_pool"], rules_thr), "xharness": out["xharness"],
                            "note": "Main data with the hydra task pool cut to the other-harness slice size: "
                                    "same sessions per account as the other harness."}
     return out
 
 
-def _cross_harness(model: am.LogitModel, normal: Table, xharness: Table) -> dict[str, Any]:
-    return {"normal": recall_by_persona(model, normal), "xharness": recall_by_persona(model, xharness),
+def _cross_harness(model: am.LogitModel, normal: Table, xharness: Table,
+                   rules_thr: dict[str, float] | None = None) -> dict[str, Any]:
+    return {"normal": recall_by_persona(model, normal, rules_thr), "xharness": recall_by_persona(model, xharness, rules_thr),
             "holdout_auc": {"normal": _auc(normal.y, model.predict_many(normal.rows)),
                             "xharness": _auc(xharness.y, model.predict_many(xharness.rows))},
             "thresholds": model.thresholds,
@@ -376,7 +386,7 @@ def _cross_harness(model: am.LogitModel, normal: Table, xharness: Table) -> dict
 
 # ---------------------------------------------------------------- control 7: source reliance
 
-def source_reliance(model: am.LogitModel, table: Table) -> dict[str, Any]:
+def source_reliance(model: am.LogitModel, table: Table, rules_thr: dict[str, float] | None = None) -> dict[str, Any]:
     """Does the account score follow the data source when the label is the same? (format probe protection)
 
     Normal accounts: Open-SWE based (benchmark runners) against SWE-chat based (solo developers, SaaS app).
@@ -386,11 +396,12 @@ def source_reliance(model: am.LogitModel, table: Table) -> dict[str, Any]:
     from scipy.stats import spearmanr
     scores = model.predict_many(table.rows)
     block = model.thresholds["block"]
+    rblock = _rules_block(table, rules_thr)
     normal = [i for i, y in enumerate(table.y) if not y and table.swechat[i] is not None]
     ose = [i for i in normal if table.swechat[i] < 0.5]
     swe = [i for i in normal if table.swechat[i] >= 0.5]
     group = lambda idx: {"accounts": len(idx), "mean_score": round(float(np.mean([scores[i] for i in idx])), 4) if idx else None,  # noqa: E731
-                         "blocked": int(sum(scores[i] >= block for i in idx))}
+                         "blocked": int(sum(scores[i] >= block or rblock[i] for i in idx))}
     auc = _auc([1] * len(ose) + [0] * len(swe), [scores[i] for i in ose + swe]) if ose and swe else None
     stealth = [i for i, p in enumerate(table.personas) if p == "stealth" and table.swechat[i] is not None]
     rho = spearmanr([table.swechat[i] for i in stealth], [scores[i] for i in stealth]) if len(stealth) > 2 else None
@@ -408,7 +419,7 @@ def source_reliance(model: am.LogitModel, table: Table) -> dict[str, Any]:
 def permutation_test(train: Table, test: Table, runs: int, seed: int) -> dict[str, Any]:
     """Retrain the account model on shuffled train labels. The holdout AUC must be near 0.5."""
     rng = np.random.default_rng(seed)
-    names = am.feature_names(train.rows)
+    names = am.model_names(train.rows) or am.feature_names(train.rows)
     aucs = []
     for _ in range(runs):
         model = am.fit(train.rows, list(rng.permutation(train.y)), names=names)
@@ -420,7 +431,7 @@ def permutation_test(train: Table, test: Table, runs: int, seed: int) -> dict[st
             "std_auc": round(float(np.std(valid)), 4) if valid else None,
             "true_label_auc": _round(true_auc),
             "p_value": round((1 + sum(a >= true_auc for a in valid)) / (1 + len(valid)), 4) if true_auc else None,
-            "note": "Account model retrained on train tables with shuffled labels; AUC on the holdout table. "
+            "note": "Learned model (account.model_groups) retrained on train tables with shuffled labels; AUC on the holdout table. "
                     "One shuffle gives a random weight direction, so one run can be far from 0.5 when the "
                     "features separate the classes. With unequal classes, outlier accounts get the majority "
                     "label more often, which can move the mean away from 0.5 in either direction. "
@@ -444,9 +455,22 @@ def evaluate_subset(names: list[str], train: Table, val: Table, test: Table) -> 
             "holdout_fpr_at_block": round(float(np.mean(neg)), 4) if neg else None}
 
 
+def evaluate_rules(train: Table, val: Table, test: Table) -> dict[str, Any]:
+    """The rules statistic alone: thresholds on validation, metrics on holdout (no fit)."""
+    thr = am.choose_thresholds([rules.value(r) for r in val.rows], val.y)
+    vals = [rules.value(r) for r in test.rows]
+    pos = [v >= thr["block"] for v, y in zip(vals, test.y) if y]
+    neg = [v >= thr["block"] for v, y in zip(vals, test.y) if not y]
+    return {"n_features": 1, "holdout_auc": _round(_auc(test.y, vals)), "block_threshold": round(thr["block"], 4),
+            "holdout_recall_at_block": round(float(np.mean(pos)), 4) if pos else None,
+            "holdout_fpr_at_block": round(float(np.mean(neg)), 4) if neg else None}
+
+
 def ablation(train: Table, val: Table, test: Table) -> dict[str, Any]:
     names = am.feature_names(train.rows)
-    return {"variants": {k: evaluate_subset(v, train, val, test) for k, v in ablation_subsets(names).items()},
+    variants = {k: evaluate_subset(v, train, val, test) for k, v in ablation_subsets(names).items()}
+    variants["rules statistic only (D1)"] = evaluate_rules(train, val, test)
+    return {"variants": variants,
             "feature_origin": {n: {"origin": feature_origin(n), "spec_real_data": spec_real_data(n),
                                    "why": FEATURE_ORIGIN.get(n, ("", "not in the mapping"))[1]} for n in names},
             "note": "Retrained on train tables, thresholds on validation, metrics on holdout. "
@@ -511,8 +535,9 @@ def model_controls(data_dir: Path | None, models_dir: Path, features_dir: Path) 
     normal = cached or holdout_table(False, seed, models_dir, data_dir)
     xharness = holdout_table(True, seed, models_dir, data_dir)
     matched = sessions_matched(seed, models_dir, data_dir)
-    out: dict[str, Any] = {"cross_harness": cross_harness(model, normal, xharness, matched),
-                           "source_reliance": source_reliance(model, normal)}
+    rules_thr = rules.load(models_dir)
+    out: dict[str, Any] = {"cross_harness": cross_harness(model, normal, xharness, matched, rules_thr),
+                           "source_reliance": source_reliance(model, normal, rules_thr)}
     train, val = train_tables(features_dir)
     if train is None or val is None:
         reason = f"cached train or val feature tables missing in {features_dir}"

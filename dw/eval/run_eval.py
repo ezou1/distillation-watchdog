@@ -6,7 +6,6 @@ from __future__ import annotations
 
 import json
 import math
-import random
 import time
 from collections import defaultdict
 from typing import Any
@@ -17,12 +16,10 @@ from sklearn.metrics import precision_recall_curve, roc_auc_score, roc_curve
 
 from dw.common import embed
 from dw.common.config import CFG, path
-from dw.common.schema import Session
 from dw.sim.offline import OfflineResult, run_offline
 from dw.sim.scenario import Scenario, build_scenario
-from dw.train.train_all import EMB_CACHE, MODELS, elicitation_set, first_user, load_bank, real_tool_outputs, save_features
-from dw.watchdog import account_model as am
-from dw.watchdog.detectors import training as tr
+from dw.train.train_all import EMB_CACHE, MODELS, save_features
+from dw.watchdog import account_model as am, rules
 from dw.watchdog.worker import Worker
 
 matplotlib.use("Agg")
@@ -33,11 +30,6 @@ NORMAL = ["solo_dev", "saas_app", "benchmark_runner"]
 ATTACK = ["hydra", "fake_env", "stealth"]
 COLORS = {"solo_dev": "#1b7f3b", "saas_app": "#2a6fdb", "benchmark_runner": "#7a4fbf",
           "hydra": "#c62828", "fake_env": "#ef6c00", "stealth": "#6d4c41"}
-
-
-def holdout_sessions() -> list[Session]:
-    with open(path("splits") / "holdout.jsonl", encoding="utf-8") as f:
-        return [Session.model_validate_json(line) for line in f]
 
 
 def run_holdout() -> tuple[Scenario, Worker, OfflineResult, float]:
@@ -56,7 +48,8 @@ def account_table(scen: Scenario, worker: Worker) -> list[dict[str, Any]]:
         if acct is None or acct.n_requests < CFG["account"]["min_requests"] or acct.score is None:
             continue
         rows.append({"id": aid, "persona": label["persona"], "y": int(label["role"] == "attack"),
-                     "score": acct.score, "state": acct.state, "campaign": acct.campaign_id,
+                     "score": acct.score, "rules_level": acct.rules_level or "normal",
+                     "rules_value": rules.value(acct.features), "state": acct.state, "campaign": acct.campaign_id,
                      "requests": acct.n_requests, "features": acct.features})
     return rows
 
@@ -67,11 +60,14 @@ def persona_metrics(rows: list[dict[str, Any]], thresholds: dict[str, float]) ->
     for persona in ATTACK + NORMAL:
         group = [r for r in rows if r["persona"] == persona]
         n = len(group)
-        acct_block = sum(r["score"] >= thresholds["block"] for r in group)
-        acct_review = sum(r["score"] >= thresholds["review"] for r in group)
+        rules_block = sum(r["rules_level"] == "block" for r in group)
+        model_block = sum(r["score"] >= thresholds["block"] for r in group)
+        acct_block = sum(r["score"] >= thresholds["block"] or r["rules_level"] == "block" for r in group)
+        acct_review = sum(r["score"] >= thresholds["review"] or r["rules_level"] in ("review", "block") for r in group)
         final_block = sum(r["state"] == "block" for r in group)
         final_review = sum(r["state"] in ("block", "review") for r in group)
-        out[persona] = {"accounts": n, "account_level_block": acct_block, "account_level_review_or_block": acct_review,
+        out[persona] = {"accounts": n, "rules_block": rules_block, "model_block": model_block,
+                        "account_level_block": acct_block, "account_level_review_or_block": acct_review,
                         "final_block": final_block, "final_review_or_block": final_review,
                         "disclosed": sum(r["state"] == "disclosed" for r in group),
                         "rate_account_level_block": round(acct_block / n, 3) if n else None,
@@ -80,21 +76,27 @@ def persona_metrics(rows: list[dict[str, Any]], thresholds: dict[str, float]) ->
 
 
 def roc_pr(rows: list[dict[str, Any]]) -> dict[str, Any]:
+    """ROC and precision-recall of the learned model score, with the ROC of the rules statistic for comparison."""
     y = [r["y"] for r in rows]
     s = [r["score"] for r in rows]
     fpr, tpr, _ = roc_curve(y, s)
     prec, rec, _ = precision_recall_curve(y, s)
+    r_fpr, r_tpr, _ = roc_curve(y, [r["rules_value"] for r in rows])
     fig, ax = plt.subplots(1, 2, figsize=(11, 4.5))
-    ax[0].plot(fpr, tpr, lw=2.5, color="#c62828")
+    ax[0].plot(r_fpr, r_tpr, lw=2, color="#2a6fdb", label="rules statistic (D1)")
+    ax[0].plot(fpr, tpr, lw=2.5, color="#c62828", label="learned model")
+    ax[0].legend(loc="lower right")
     ax[0].plot([0, 1], [0, 1], ls="--", color="grey")
     ax[0].set(xlabel="False positive rate (normal accounts)", ylabel="Recall (attack accounts)",
-              title=f"Account ROC, AUC = {roc_auc_score(y, s):.3f}")
+              title=f"Account ROC, model AUC = {roc_auc_score(y, s):.3f}")
     ax[1].plot(rec, prec, lw=2.5, color="#2a6fdb")
     ax[1].set(xlabel="Recall", ylabel="Precision", title="Account precision-recall")
     fig.tight_layout()
     fig.savefig(REPORTS / "roc_pr.png", dpi=110)
     plt.close(fig)
-    return {"auc": round(float(roc_auc_score(y, s)), 4), "accounts": len(rows), "attack_accounts": sum(y)}
+    return {"auc": round(float(roc_auc_score(y, s)), 4),
+            "rules_auc": round(float(roc_auc_score(y, [r["rules_value"] for r in rows])), 4),
+            "accounts": len(rows), "attack_accounts": sum(y)}
 
 
 def time_to_block(scen: Scenario, result: OfflineResult, worker: Worker) -> dict[str, Any]:
@@ -194,30 +196,61 @@ def cumulative_plot(scen: Scenario, reqs: list, model: Any, s: np.ndarray, summa
     return {p: "acct " + a[-6:] for p, a in chosen.items()}
 
 
+def _binary(probs: list[float], labels: list[int], thr: float = 0.5) -> dict[str, Any]:
+    pred = [p >= thr for p in probs]
+    tp = sum(p and y for p, y in zip(pred, labels))
+    fp = sum(p and not y for p, y in zip(pred, labels))
+    pos, neg = sum(labels), len(labels) - sum(labels)
+    return {"n": len(labels), "auc": round(float(roc_auc_score(labels, probs)), 4) if 0 < pos < len(labels) else None,
+            "precision": round(tp / max(1, tp + fp), 4), "recall": round(tp / max(1, pos), 4),
+            "fpr": round(fp / max(1, neg), 4), "threshold": thr}
+
+
+def context_holdout() -> list[dict[str, Any]]:
+    """The holdout test set of the context model (bank B prompts, realism examples). Built on first use."""
+    from dw.train import context_data
+    if not (context_data.OUT / "holdout.jsonl").exists():
+        context_data.build(holdout=True)
+    return [json.loads(line) for line in open(context_data.OUT / "holdout.jsonl", encoding="utf-8")]
+
+
+def _scored(rows: list[dict[str, Any]]) -> tuple[list[float], list[int], int]:
+    """Context-model scores of rows. Rows without a score (service down) are left out and counted."""
+    from dw.common.context import scorer
+    scores = scorer().score_many(r["text"] for r in rows)
+    scorer().save()
+    kept = [(scores[r["text"]], r["label"]) for r in rows if scores.get(r["text"]) is not None]
+    return [p for p, _ in kept], [y for _, y in kept], len(rows) - len(kept)
+
+
 def elicitation_bank_b() -> dict[str, Any]:
-    """D4 classifier versus the keyword baseline on bank B placed into holdout prompts."""
-    model = tr.load_model(MODELS, "d4")
+    """D4: the context model versus the keyword baseline on bank B phrases (not seen in training) in holdout prompts."""
     import re
     pattern = re.compile((MODELS / "d4_keywords.txt").read_text())
-    prompts = [first_user(s) for s in holdout_sessions() if first_user(s)]
-    random.Random(9).shuffle(prompts)
-    texts, labels = elicitation_set(prompts[: CFG["train"]["elicit_prompts"] // 3], load_bank("bank_b"), seed=3)
-    return {"classifier": tr.evaluate_classifier(model, texts, labels),
-            "keyword_baseline": tr.evaluate_keyword(pattern, texts, labels), "n": len(texts)}
+    rows = [r for r in context_holdout() if r["task"] == "elicitation"]
+    probs, labels, unscored = _scored(rows)
+    keyword = [1.0 if pattern.search(r["text"]) else 0.0 for r in rows]
+    return {"classifier": _binary(probs, labels) if probs else None,
+            "keyword_baseline": _binary(keyword, [r["label"] for r in rows]),
+            "n": len(rows), "unscored": unscored}
 
 
 def fake_env_summary(rows: list[dict[str, Any]]) -> dict[str, Any]:
+    """D6: realism features of fake-environment accounts against all others, and the context model on the holdout set."""
     out: dict[str, Any] = {}
     for group, pred in (("fake_env", lambda r: r["persona"] == "fake_env"), ("others", lambda r: r["persona"] != "fake_env")):
         sel = [r["features"] for r in rows if pred(r)]
         out[group] = {k: round(float(np.mean([f.get(k, 0.0) for f in sel])), 4) if sel else None
-                      for k in ("d6_contradictions_per_100", "d6_contradiction_session_frac", "d6_fake_prob_mean")}
-    realism = tr.load_model(MODELS, "d6")
-    swe = [s for s in holdout_sessions() if s.source == "swechat"]
-    real = real_tool_outputs(swe, 3000, seed=11)
-    if realism is not None and real:
-        out["realism_fpr_on_real_swechat_holdout"] = round(float(np.mean(realism.predict_proba(real)[:, 1] >= 0.5)), 4)
-        out["realism_real_outputs_n"] = len(real)
+                      for k in ("d6_fake_prob_mean", "d6_fake_high_frac")}
+    realism = [r for r in context_holdout() if r["task"] == "realism"]
+    probs, labels, unscored = _scored(realism)
+    out["realism_holdout"] = {**_binary(probs, labels), "unscored": unscored} if probs else None
+    from dw.train import context_data
+    check = [json.loads(line) for line in open(context_data.OUT / "holdout_swechat_check.jsonl", encoding="utf-8")]
+    c_probs, _, _ = _scored(check)
+    if c_probs:
+        out["realism_fpr_on_real_swechat_holdout"] = round(float(np.mean([p >= 0.5 for p in c_probs])), 4)
+        out["realism_real_outputs_n"] = len(c_probs)
     return out
 
 
@@ -239,6 +272,7 @@ def main() -> None:
                   {r["id"]: scen.labels[r["id"]] for r in rows})
     thresholds = worker.model.thresholds
     per = persona_metrics(rows, thresholds)
+    thresholds = {**thresholds, "rules": worker.rules}
     compute = json.loads((REPORTS / "compute.json").read_text()) if (REPORTS / "compute.json").exists() else {}
     compute["eval"] = {"holdout_requests": len(result.requests), "wall_s": round(eval_s, 1),
                        "requests_per_s": round(len(result.requests) / max(eval_s, 1e-9), 1)}

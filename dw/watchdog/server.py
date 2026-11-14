@@ -54,8 +54,6 @@ class Hub:
         self.subscribers: set[asyncio.Queue[tuple[str, dict]]] = set()
         self.casefiles: dict[str, dict[str, Any]] = {}
         self.llm: Optional[casefile.ChatClient] = None
-        self.inverting: set[str] = set()
-        self.background: set[asyncio.Task] = set()
 
     # ---- ingest and worker ------------------------------------------------------------------
 
@@ -96,25 +94,6 @@ class Hub:
 
     def run_campaigns(self) -> None:
         self.publish(self.worker.run_campaigns())
-        for camp in self.worker.campaigns.values():
-            if camp.template is None and camp.state != "normal" and camp.id not in self.inverting:
-                self.inverting.add(camp.id)
-                task = asyncio.create_task(self._invert(camp))
-                self.background.add(task)
-                task.add_done_callback(self.background.discard)
-
-    async def _invert(self, camp: Campaign) -> None:
-        """D5 local template inversion for the top member of a flagged campaign."""
-        member = max(camp.members, key=lambda a: self.worker.accounts[a].score or 0.0)
-        try:
-            from dw.watchdog.detectors.templates import invert_templates
-            text = invert_templates(self.worker.accounts[member])
-        except Exception as exc:  # no D5, offline mode, or LLM error: the campaign has no template
-            log.warning("template inversion for %s failed: %s", camp.id, exc)
-            return
-        if text:
-            self.worker.templates[member] = text
-            camp.template = text
 
     def reset(self) -> None:
         while not self.queue.empty():
@@ -123,7 +102,6 @@ class Hub:
         self.dropped = 0
         self.processed.clear()
         self.casefiles.clear()
-        self.inverting.clear()
 
     # ---- SSE ---------------------------------------------------------------------------------
 
@@ -163,7 +141,7 @@ def _history(acct: AccountState) -> list[list[float]]:
 
 def account_row(acct: AccountState) -> dict[str, Any]:
     return {"id": acct.account_id, "pseudonym": display_name(acct.account_id), "you": _you(acct.account_id),
-            "score": _score(acct), "state": acct.state, "requests": acct.n_requests,
+            "score": _score(acct), "rules_level": acct.rules_level, "state": acct.state, "requests": acct.n_requests,
             "campaign_id": acct.campaign_id, "reasons": top_reasons(acct, 3), "history": _history(acct)}
 
 
@@ -232,7 +210,7 @@ def campaign_detail(worker: Worker, c: Campaign) -> dict[str, Any]:
     members = [{"id": a, "pseudonym": display_name(a), "score": _score(worker.accounts[a]),
                 "state": worker.accounts[a].state} for a in c.members]
     return {"id": c.id, "size": len(c.members), "score": c.score, "state": c.state, "members": members,
-            "edges": c.edges, "template": c.template, "evidence": [evidence_row(e) for e in c.evidence]}
+            "edges": c.edges, "evidence": [evidence_row(e) for e in c.evidence]}
 
 
 def graph_view(worker: Worker) -> dict[str, Any]:
@@ -370,7 +348,7 @@ def create_app(worker: Optional[Worker] = None, store: Optional[EventStore] = No
     async def accounts(state: Optional[str] = None, sort: str = "score", limit: int = 50) -> dict[str, Any]:
         rows = [a for a in worker.accounts.values() if not state or a.state == state]
         keys: dict[str, Callable[[AccountState], float]] = {
-            "score": lambda a: a.score if a.score is not None else -1.0,
+            "score": lambda a: worker.strength(a) if a.score is not None or a.rules_level else -1.0,
             "requests": lambda a: float(a.n_requests), "last_seen": lambda a: a.last_seen}
         rows.sort(key=keys.get(sort, keys["score"]), reverse=True)
         return {"accounts": [account_row(a) for a in rows[:max(limit, 0)]]}

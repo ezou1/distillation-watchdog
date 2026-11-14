@@ -214,19 +214,8 @@ detectors:
     max_effort_values: [high, xhigh]
     elicit_threshold: 0.5       # a user message above this score counts as elicitation
     evidence_score: 0.8
-    lr_C: 4.0
     keyword_top: 20
     keyword_ngrams: [2, 4]
-  d5:
-    skeleton_min_frac: 0.30
-    min_sessions: 5
-    inversion_prompts: 10
-    min_line_tokens: 3          # ignore masked lines with fewer tokens
-  d6:
-    ws_normalize: true
-    snippet_chars: 60
-    lr_C: 4.0
-    realism_chars: 1000         # the realism classifier reads the first N chars of a tool output (speed)
   d7:
     active_hour_min_requests: 1
     concurrency_window_s: 300
@@ -238,11 +227,18 @@ account:
   review_max_fpr: 0.05
   logreg_C: 1.0
   class_weight: balanced
+  model_groups: [d4]               # detector groups in the learned model. D1 = rules score, D7 = exoneration. D2, D3, D6 failed the validation check (D-49)
+  snapshot_requests: [30, 60, 120, 250, 500, 1000]   # training rows: features at these request counts and at the end
   z_clip: 5.0                   # standardized feature values are clipped to +-5 (training and scoring)
   min_rel_std: 0.01             # features with a smaller training std (relative to max(1, |mean|)) are left out
   train_seeds: [101, 102, 103]
   val_seed: 201
   holdout_seed: 301
+
+rules:
+  feature: d1_dup_rate          # rules score: share of requests that repeat an earlier context of the account
+  exonerate_min_users: 5        # D7: an account with this many distinct `user` values gets at most "review" from the rules
+  file: rules.json              # thresholds from validation, in models/
 
 campaign:
   candidate_threshold: 0.3
@@ -250,12 +246,10 @@ campaign:
   sync_corr_min: 0.6
   edge_weights:
     shared_task: 1.0
-    shared_skeleton: 0.8
     sync: 0.6
     rare_schema: 0.3
   min_edge_weight: 0.5
   louvain_seed: 7
-  skeleton_min_words: 3          # masked prompt lines shorter than this are not template lines
   evidence_tasks: 3              # shared-task evidence items per campaign
   block_threshold: 1.5
   review_threshold: 1.0
@@ -287,7 +281,6 @@ train:
   full_stealth: true            # full stealth persona also in train and validation (source protection, R1-M2)
   prompt_chars: 1500
   elicit_prompts: 3000
-  realism_neg_ratio: 2
   request_rows_max: 200000
   processes: 2                  # scenarios run in parallel processes (each needs up to 4.5 GB). More processes share cores and cost more CPU time.
 
@@ -300,3 +293,20 @@ controls:
   prose_max_chars: 6000             # assistant prose per session for the prose probe
   prose_max_features: 50000
   permutation_runs: 20               # a single shuffle can land far from 0.5; the mean must be near 0.5
+
+context_model:                  # the text parts of D4 and D6 (dw/train/context_data.py, scripts/context_train.py)
+  seed: 31
+  call_chars: 300               # characters of the tool call line
+  output_chars: 1500            # characters of the tool output
+  prompt_chars: 1500            # characters of a user prompt
+  realism_neg_ratio: 2          # real Open-SWE outputs per fake output (same tool kind)
+  swechat_check: 3000           # real SWE-chat outputs in the check set (val, holdout)
+  elicit_prompts: {train: 6000, val: 1000, holdout: 1500}
+  wrapper_frac: 0.15            # share of prompts (both labels) inside the SaaS product wrapper
+  model_tag: qwen3-0.6b-base-v2 # cache key: change it when the model or the input format changes
+  url: http://127.0.0.1:9100    # scoring service through the SSH tunnel (scripts/context_tunnel.sh)
+  batch: 256                    # texts per request to the service
+  timeout_s: 120
+  retry_s: 30                   # after a failed call, wait this long before the next try
+  save_every: 5000              # new scores between disk-cache writes
+  evidence_score: 0.9           # a text with this score or more becomes an evidence item

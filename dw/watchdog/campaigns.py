@@ -1,16 +1,15 @@
 """Campaign detection (section B8.5): an account graph of candidate accounts and Louvain communities.
 
-Edges: shared tasks, shared template skeleton lines, synchronized activity, and a shared rare tool schema.
+Edges: shared tasks, synchronized activity, and a shared rare tool schema.
 A campaign with a score above the block threshold blocks all members, also members below the account threshold.
 """
 from __future__ import annotations
 
 import itertools
 import math
-import re
 from collections import Counter
 from dataclasses import dataclass, field
-from typing import Callable, Iterable, Optional
+from typing import Callable, Optional
 
 import networkx as nx
 import numpy as np
@@ -19,46 +18,18 @@ from dw.common.config import CFG
 from dw.common.hashing import text_hash
 from dw.common.schema import DetectorView, Evidence
 
-SkeletonFn = Callable[[str], Iterable[str]]
-
-_MASKS: list[tuple[re.Pattern[str], str]] = [
-    (re.compile(r"\"[^\"]*\"|'[^']*'|`[^`]*`"), "<STR>"),
-    (re.compile(r"\S*/\S*"), "<PATH>"),
-    (re.compile(r"\b\w*\d\w*\b"), "<NUM>"),
-    (re.compile(r"\b[A-Za-z]+(?:[._][A-Za-z0-9]+)+\b|\b[a-z]+[A-Z]\w*\b"), "<ID>"),
-]
-
-
-def simple_skeleton_lines(text: str) -> list[str]:
-    """Fallback if D5 is not available: masked lines of a prompt with enough words."""
-    lines = []
-    for line in text.splitlines():
-        for pattern, repl in _MASKS:
-            line = pattern.sub(repl, line)
-        line = " ".join(line.lower().split())
-        if len(line.split()) >= CFG["campaign"]["skeleton_min_words"]:
-            lines.append(line)
-    return lines
-
-
-try:  # D5 owns the skeleton masking; use the same lines for the campaign graph
-    from dw.watchdog.detectors.templates import skeleton_lines
-except ImportError:  # pragma: no cover - only while D5 is not built
-    skeleton_lines = simple_skeleton_lines  # type: ignore[assignment]
-
 
 @dataclass
 class Profile:
     """What the campaign graph needs about one account. The worker updates it for every request."""
 
     tasks: dict[str, str] = field(default_factory=dict)       # first-user-message hash -> request_id
-    skeletons: dict[str, str] = field(default_factory=dict)   # skeleton line hash -> request_id
     minutes: Counter[int] = field(default_factory=Counter)    # sim-time minute -> requests
     schemas: set[str] = field(default_factory=set)
 
 
-def update_profile(profile: Profile, view: DetectorView, skeleton: SkeletonFn = skeleton_lines) -> None:
-    """Add one request to the profile. Tasks and skeletons come from the first user message of a new session."""
+def update_profile(profile: Profile, view: DetectorView) -> None:
+    """Add one request to the profile. Tasks come from the first user message of a new session."""
     profile.minutes[int(view.sim_time // 60)] += 1
     profile.schemas.add(view.tools_schema_id)
     if not view.new_session:
@@ -67,8 +38,6 @@ def update_profile(profile: Profile, view: DetectorView, skeleton: SkeletonFn = 
     if first is None:
         return
     profile.tasks.setdefault(text_hash(first), view.request_id)
-    for line in skeleton(first):
-        profile.skeletons.setdefault(text_hash(line), view.request_id)
 
 
 @dataclass
@@ -84,7 +53,6 @@ class Campaign:
     mean_edge_weight: float
     top_edge_types: list[str]
     evidence: list[Evidence] = field(default_factory=list)
-    template: Optional[str] = None
 
 
 def _sync_matrix(ids: list[str], profiles: dict[str, Profile]) -> np.ndarray:
@@ -111,10 +79,6 @@ def _edge(a: Profile, b: Profile, corr: float, schema_rarity: dict[str, float]) 
     if n_tasks:
         types["shared_task"] = w["shared_task"] * math.log1p(n_tasks)
         parts.append(f"{n_tasks} shared tasks")
-    n_skel = len(a.skeletons.keys() & b.skeletons.keys())
-    if n_skel:
-        types["shared_skeleton"] = w["shared_skeleton"] * math.log1p(n_skel)
-        parts.append(f"{n_skel} shared template lines")
     if corr > CFG["campaign"]["sync_corr_min"]:
         types["sync"] = w["sync"] * corr
         parts.append(f"per-minute correlation {corr:.2f}")

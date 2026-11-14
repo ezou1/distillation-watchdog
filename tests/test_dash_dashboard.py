@@ -133,7 +133,7 @@ def test_campaigns_graph_and_casefiles(client) -> None:
     for c in cmps:
         assert set(c) >= {"id", "size", "score", "state", "mean_member_score", "mean_edge_weight", "top_edge_types"}
     c = client.get(f"/api/campaigns/{cmps[0]['id']}").json()
-    assert set(c) >= {"id", "size", "score", "state", "members", "edges", "template", "evidence"}
+    assert set(c) >= {"id", "size", "score", "state", "members", "edges", "evidence"}
     assert len(c["members"]) == c["size"]
     assert all(set(e) >= {"source", "target", "weight", "types", "evidence"} for e in c["edges"])
     for ev in c["evidence"]:

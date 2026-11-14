@@ -39,6 +39,20 @@ def _table(head: list[str], rows: list[list[Any]]) -> str:
     return "\n".join(out)
 
 
+def _realism_rows(fe: dict[str, Any]) -> list[str]:
+    """The context model on the holdout realism set, and its rate on real SWE-chat outputs (source check)."""
+    out = []
+    rh = fe.get("realism_holdout")
+    if rh:
+        out += [f"On the holdout realism set ({_f(rh['n'])} tool outputs, fakes against real Open-SWE outputs), the context "
+                f"model has AUC {_f(rh['auc'])}, recall {_f(rh['recall'])}, and a false positive rate of {_f(rh['fpr'])} "
+                f"at the score 0.5.", ""]
+    if fe.get("realism_fpr_on_real_swechat_holdout") is not None:
+        out += [f"It flags {_f(fe['realism_fpr_on_real_swechat_holdout'])} of {_f(fe.get('realism_real_outputs_n'))} real "
+                f"SWE-chat tool outputs in the holdout (a source that it did not see in training).", ""]
+    return out
+
+
 def results(m: dict[str, Any], compute: dict[str, Any], load: dict[str, Any], cost: dict[str, Any]) -> str:
     sc, roc, pr = m["scenario"], m["account_roc"], m["per_request_vs_per_account"]
     parts = [
@@ -53,7 +67,8 @@ def results(m: dict[str, Any], compute: dict[str, Any], load: dict[str, Any], co
             ["Per-request false positive rate at this threshold", pr["request_fpr"]],
             ["Per-request recall at this threshold", pr["request_recall"]],
             [f"False request flags per day at {pr['requests_per_day']:,} requests", pr["false_request_flags_per_day"]],
-            ["Account model AUC", roc["auc"]],
+            ["Learned model AUC (account level)", roc["auc"]],
+            ["Rules statistic AUC (D1 repeated contexts)", roc.get("rules_auc")],
             ["Normal accounts in the holdout", pr["normal_accounts"]],
             ["Falsely blocked normal accounts", pr["falsely_blocked_normal_accounts"]],
             ["Attack accounts blocked (share)", pr["attack_account_recall"]],
@@ -63,10 +78,13 @@ def results(m: dict[str, Any], compute: dict[str, Any], load: dict[str, Any], co
         "",
         "### Accounts per persona",
         "",
-        "\"Account level\" uses only the account score. \"Final\" includes the campaign propagation.",
+        "\"Rules\" is the D1 rules score. \"Model\" is the learned model. \"Account level\" is either one. "
+        "\"Final\" includes the campaign propagation.",
         "",
-        _table(["Persona", "Accounts", "Blocked (account level)", "Blocked (final)", "Review or block (final)"],
-               [[TITLES[p], v["accounts"], v["account_level_block"], v["final_block"], v["final_review_or_block"]]
+        _table(["Persona", "Accounts", "Blocked (rules)", "Blocked (model)", "Blocked (account level)",
+                "Blocked (final)", "Review or block (final)"],
+               [[TITLES[p], v["accounts"], v.get("rules_block"), v.get("model_block"), v["account_level_block"],
+                 v["final_block"], v["final_review_or_block"]]
                 for p in PERSONAS if (v := m["per_persona"].get(p))]),
         "",
         "![ROC and precision-recall](reports/roc_pr.png)",
@@ -89,17 +107,16 @@ def results(m: dict[str, Any], compute: dict[str, Any], load: dict[str, Any], co
         "",
         _table(["Model", "Precision", "Recall", "False positive rate"],
                [[name, v["precision"], v["recall"], v["fpr"]] for name, v in
-                (("Classifier", m["elicitation_bank_b"]["classifier"]),
+                (("Context model", m["elicitation_bank_b"]["classifier"]),
                  ("Keyword baseline", m["elicitation_bank_b"]["keyword_baseline"]))]),
         "",
-        "### D6 environment",
+        "### D6 environment (context model)",
         "",
-        _table(["Group", "Contradictions per 100 tool results", "Sessions with a contradiction", "Mean realism score"],
-               [[g, v["d6_contradictions_per_100"], v["d6_contradiction_session_frac"], v["d6_fake_prob_mean"]]
+        _table(["Group", "Mean realism score", "Share of tool outputs with a score of 0.5 or more"],
+               [[g, v["d6_fake_prob_mean"], v["d6_fake_high_frac"]]
                 for g, v in (("Fake-environment accounts", m["fake_env"]["fake_env"]), ("Other accounts", m["fake_env"]["others"]))]),
         "",
-        f"The realism classifier flags {_f(m['fake_env'].get('realism_fpr_on_real_swechat_holdout'))} of "
-        f"{_f(m['fake_env'].get('realism_real_outputs_n'))} real SWE-chat tool outputs in the holdout.",
+        *_realism_rows(m["fake_env"]),
         "",
         "### Compute",
         "",

@@ -33,7 +33,7 @@ SYSTEM = (
     "Every paragraph and every list item must cite one or more item IDs in square brackets, for example [ev-0000412]. "
     "Cite only IDs from the input. Do not invent numbers. "
     "A positive log_odds value points to an attack. A negative log_odds value points to normal use. "
-    "Items with the detector 'campaign' are links between accounts (shared tasks, shared templates, synchronized timing). "
+    "Items with the detector 'campaign' are links between accounts (shared tasks, synchronized timing, a shared rare tool format). "
     "Cite only the IDs that support the sentence. Do not ask about data that the input does not have."
 )
 

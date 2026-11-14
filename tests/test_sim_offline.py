@@ -86,3 +86,18 @@ def test_offline_with_real_lab(scenario: Scenario) -> None:
     assert result.counters["solo_dev"]["blocked"] == 0
     for ev in worker.events:
         assert "x_replay" not in ev.model_dump_json()
+
+
+def test_prefetch_scores_every_text_before_the_replay(scenario: Scenario, monkeypatch: pytest.MonkeyPatch) -> None:
+    """Offline runs score all context-model texts in batches first; the replay then needs no further call."""
+    from dw.common import context
+    from dw.watchdog.worker import Worker
+    from fake_scorer import FakeScorer
+    scorer = FakeScorer(cached=False)
+    monkeypatch.setattr(context, "_SCORER", scorer)
+    worker = Worker(score=False)
+    offline.run_offline(scenario, worker)
+    worker.rescore()
+    assert len(scorer.batches) == 1 and len(scorer.batches[0]) > 10      # one prefetch batch
+    assert all(not getattr(d, "_pending", []) for d in worker.detectors)  # nothing waited for a score
+    assert any("d6_fake_prob_mean" in a.features for a in worker.accounts.values())

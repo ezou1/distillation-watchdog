@@ -224,10 +224,12 @@ Response: `{"accepted": 1, "dropped": 0}`
 
 `state` filters by account state. `sort` is `score` (default), `requests`, or `last_seen`. Rows never contain the persona label or the data source.
 
+`score` is the learned model score (D2, D3, D4, D6). `rules_level` is the level from the rules score (D1 repeated contexts, with the D7 exoneration): `normal`, `review`, `block`, or `null` before 30 requests. The state is the most severe of the model level, the rules level, and the campaign. `sort=score` sorts by the stronger of the model score and the rules level.
+
 ```json
-{"accounts": [{"id": "acct-k3j9", "pseudonym": "acct-3f2a9c", "you": false, "score": 0.97,
+{"accounts": [{"id": "acct-k3j9", "pseudonym": "acct-3f2a9c", "you": false, "score": 0.97, "rules_level": "block",
   "state": "block", "requests": 812, "campaign_id": "cmp-0003",
-  "reasons": ["d1_dup_rate_hot +2.1", "d7_req_per_active_hour +1.4", "d4_max_tokens_frac +0.9"],
+  "reasons": ["d6_fake_prob_mean +2.1", "d4_elicit_mean +0.9"],
   "history": [[1767571800.0, 0.2], [1767572400.0, 0.8]]}]}
 ```
 
@@ -270,7 +272,6 @@ Returns the evidence item, the exact request, and the message that the evidence 
  "members": [{"id": "acct-k3j9", "pseudonym": "acct-3f2a9c", "score": 0.97, "state": "block"}],
  "edges": [{"source": "acct-k3j9", "target": "acct-77qa", "weight": 1.8,
    "types": {"shared_task": 1.0, "sync": 0.8}, "evidence": "4 shared tasks; per-minute correlation 0.83"}],
- "template": "Solve this issue in {repo}: {issue}. Files: {files}",
  "evidence": [{"id": "ev-0000500", "detector": "campaign", "summary": "..."}]}
 ```
 

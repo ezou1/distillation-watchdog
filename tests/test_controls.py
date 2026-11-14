@@ -94,7 +94,7 @@ def test_family_mapping() -> None:
     assert c.feature_origin("d4_elicit_mean") == c.SYNTH and not c.spec_real_data("d4_elicit_mean")
     assert c.feature_origin("d4_mean_temp") == c.SIM
     assert c.feature_origin("d7_anything_new") == c.SIM
-    assert c.spec_real_data("d5_template_mass") and c.spec_real_data("d6_fake_prob_mean")
+    assert c.spec_real_data("d6_fake_prob_mean")
     assert all(name.split("_")[0] in c.DETECTORS for name in c.FEATURE_ORIGIN)
     subsets = c.ablation_subsets(list(c.FEATURE_ORIGIN))
     assert not any(n.startswith("d7_") for n in subsets["spec_real_data (B10 6a)"])
