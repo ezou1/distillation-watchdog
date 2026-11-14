@@ -267,3 +267,13 @@ train:
   elicit_prompts: 3000
   realism_neg_ratio: 2
   request_rows_max: 200000
+
+controls:
+  seed: 17
+  probe_sessions_per_source: 2500   # sessions per source and split read by the format and prose probes
+  probe_C: 1.0
+  format_target_auc: 0.70
+  top_features: 12                  # top format-probe coefficients in the report
+  prose_max_chars: 6000             # assistant prose per session for the prose probe
+  prose_max_features: 50000
+  permutation_runs: 20               # a single shuffle can land far from 0.5; the mean must be near 0.5

@@ -1,0 +1,25 @@
+{
+  "train": {
+    "load_splits": {
+      "wall_s": 6.01,
+      "peak_rss_mb": 1884.4
+    },
+    "d3_topics": {
+      "wall_s": 3014.56,
+      "peak_rss_mb": 11057.9
+    },
+    "d4_elicitation": {
+      "wall_s": 14.73,
+      "peak_rss_mb": 11333.9
+    },
+    "d6_realism": {
+      "wall_s": 24.94,
+      "peak_rss_mb": 11499.7
+    },
+    "account_model": {
+      "wall_s": 1705.3,
+      "peak_rss_mb": 14939.4
+    },
+    "train_total_s": 4769.2
+  }
+}

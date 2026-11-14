@@ -15,6 +15,7 @@ FIX = Path(__file__).parent / "fixtures"
 def test_path_normalization() -> None:
     assert normalize_paths("cd /testbed && ls /testbed/src") == "cd <REPO> && ls <REPO>/src"
     assert normalize_paths("/workspace/proj/a.py") == "<REPO>/a.py"
+    assert normalize_paths("/home/<user>/workspace/x/a.py") == "/home/<user>/workspace/x/a.py"
     assert normalize_paths("/x/y/repo/a.py", root="/x/y/repo") == "<REPO>/a.py"
     assert normalize_paths("/private/tmp/claude-501/-Users-bob-w/t.out") == "<REPO>/t.out"
     assert "/home/<user>" in clean_text("open /Users/alice/code/x.py")

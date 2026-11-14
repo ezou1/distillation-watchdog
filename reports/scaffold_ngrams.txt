@@ -1,0 +1,89 @@
+# Differential n-grams, round 3. A=swechat B=openswe.
+# source	frac_in_source	frac_in_other	ngram
+openswe	0.653	0.008	f -name "*.py"
+openswe	0.637	0.003	ls -la <REPO>
+openswe	0.625	0.007	-type f -name "*.py" |
+openswe	0.610	0.007	find <REPO> -type
+openswe	0.605	0.003	"*.py" | head
+openswe	0.601	0.009	| head -50 && echo
+openswe	0.601	0.009	-50 && echo
+openswe	0.601	0.007	<REPO> -type f
+openswe	0.601	0.002	f -name "*.py" | head
+openswe	0.597	0.003	head -50 && echo "---"
+openswe	0.597	0.003	-50 && echo "---" &&
+openswe	0.596	0.003	find <REPO> -type f -name
+openswe	0.572	0.002	<REPO> -type f -name "*.py"
+openswe	0.559	0.001	-name "*.py" | head -50
+openswe	0.554	0.001	"*.py" | head -50 &&
+openswe	0.546	0.003	python - <<'EOF'
+openswe	0.507	0.000	## Description I
+openswe	0.503	0.009	<size> <date> .github
+openswe	0.503	0.009	<owner> <group> <size> <date> .github
+openswe	0.500	0.006	<date> .github -rw-r--r--
+openswe	0.500	0.006	<group> <size> <date> .github -rw-r--r--
+openswe	0.499	0.006	<size> <date> .github -rw-r--r-- <n>
+openswe	0.499	0.006	.github -rw-r--r-- <n>
+openswe	0.498	0.006	.github -rw-r--r-- <n> <owner> <group>
+openswe	0.498	0.006	<date> .github -rw-r--r-- <n> <owner>
+openswe	0.489	0.007	<size> <date> LICENSE
+openswe	0.489	0.007	<owner> <group> <size> <date> LICENSE
+openswe	0.478	0.006	<date> LICENSE -rw-r--r--
+openswe	0.478	0.006	<group> <size> <date> LICENSE -rw-r--r--
+openswe	0.477	0.006	<size> <date> LICENSE -rw-r--r-- <n>
+openswe	0.477	0.006	LICENSE -rw-r--r-- <n>
+openswe	0.477	0.006	<date> LICENSE -rw-r--r-- <n> <owner>
+openswe	0.475	0.006	LICENSE -rw-r--r-- <n> <owner> <group>
+openswe	0.464	0.006	echo "---" && ls -la
+openswe	0.463	0.007	&& python -m
+openswe	0.449	0.000	"---" && ls -la <REPO>
+openswe	0.403	0.006	<date> .git drwxr-xr-x
+openswe	0.403	0.006	<group> <size> <date> .git drwxr-xr-x
+openswe	0.402	0.006	<size> <date> .git drwxr-xr-x <n>
+openswe	0.402	0.006	.git drwxr-xr-x <n>
+openswe	0.401	0.006	<date> .git drwxr-xr-x <n> <owner>
+openswe	0.401	0.006	.git drwxr-xr-x <n> <owner> <group>
+openswe	0.395	0.001	<size> <date> setup.py
+openswe	0.395	0.001	<owner> <group> <size> <date> setup.py
+openswe	0.372	0.000	python -m flake8
+openswe	0.365	0.004	<owner> <group> <size> <date> tests
+openswe	0.365	0.004	<size> <date> tests
+openswe	0.361	0.004	&& python -c
+openswe	0.348	0.009	<owner> <group> <size> <date> docs
+openswe	0.348	0.009	<size> <date> docs
+openswe	0.348	0.009	has no attribute
+openswe	0.347	0.000	<owner> <group> <size> <date> MANIFEST.in
+openswe	0.347	0.000	<size> <date> MANIFEST.in
+openswe	0.347	0.005	-q 2>&1 | tail -5
+openswe	0.335	0.000	<group> <size> <date> MANIFEST.in -rw-r--r--
+openswe	0.335	0.000	<size> <date> MANIFEST.in -rw-r--r-- <n>
+openswe	0.335	0.000	<date> MANIFEST.in -rw-r--r-- <n> <owner>
+openswe	0.335	0.000	MANIFEST.in -rw-r--r-- <n>
+openswe	0.335	0.000	<date> MANIFEST.in -rw-r--r--
+openswe	0.334	0.000	MANIFEST.in -rw-r--r-- <n> <owner> <group>
+openswe	0.330	0.008	sed -n 1,60p
+# Final strip list (dw.data.normalize.STRIP_STRINGS):
+#   "OBSERVATION:\n"
+#   "[Request interrupted by user for tool use]"
+#   "[Request interrupted by user]"
+#   " (file state is current in your context \u2014 no need to Read it back)"
+#   "Review the changes and make sure they are as expected. Edit the file again if necessary."
+#   "Your command ran successfully and did not produce any output."
+#   "(Bash completed with no output)"
+# Cross-harness: A=openswe B=openswe_xharness
+openswe_xharness	0.774	0.007	<REPO> && sed
+openswe_xharness	0.762	0.006	cd <REPO> && sed -n
+openswe_xharness	0.670	0.005	[...truncated...] cd <REPO> && grep
+openswe_xharness	0.625	0.003	OK cd <REPO> && python
+openswe_xharness	0.624	0.006	cd <REPO> && grep -n
+openswe_xharness	0.556	0.006	[...truncated...] cd <REPO> && python
+openswe_xharness	0.520	0.004	[...truncated...] cd <REPO> && cat
+openswe_xharness	0.516	0.009	<REPO> && python -c "
+openswe_xharness	0.512	0.008	<REPO> && ls
+openswe_xharness	0.470	0.000	HEAD detached at
+openswe_xharness	0.470	0.004	[...truncated...] cd <REPO> && git
+openswe_xharness	0.465	0.001	[...truncated...] cd <REPO> && sed
+openswe_xharness	0.419	0.005	cd <REPO> && git diff
+openswe_xharness	0.395	0.008	cd <REPO> && python -
+openswe	0.368	0.000	On branch main
+openswe_xharness	0.359	0.006	<REPO> && python - <<'EOF'
+openswe_xharness	0.309	0.007	<REPO> && python -c "import

@@ -1,0 +1,211 @@
+{
+  "d3_topics": {
+    "prompts": 13702,
+    "k": 50
+  },
+  "d4_elicitation": {
+    "train_n": 6000,
+    "val": {
+      "precision": 0.941793893129771,
+      "recall": 0.987,
+      "f1": 0.9638671875,
+      "fpr": 0.061,
+      "n": 2000.0,
+      "auc": 0.9942199999999999
+    },
+    "val_keyword": {
+      "precision": 0.7147971360381862,
+      "recall": 0.599,
+      "f1": 0.6517954298150164,
+      "fpr": 0.239,
+      "n": 2000.0
+    }
+  },
+  "d6_realism": {
+    "train_pos": 5009,
+    "train_neg": 10018,
+    "val": {
+      "precision": 0.7573812580231065,
+      "recall": 0.7370393504059962,
+      "f1": 0.7470718581829693,
+      "fpr": 0.11805121798875702,
+      "n": 4803.0,
+      "auc": 0.9013550829607199
+    }
+  },
+  "account_model": {
+    "train_accounts": 406,
+    "train_attack": 285,
+    "val_accounts": 134,
+    "thresholds": {
+      "block": 0.290381004803937,
+      "review": 0.1295228952372755
+    },
+    "coefficients": [
+      {
+        "name": "d1_dup_rate",
+        "coef": 1.8258
+      },
+      {
+        "name": "d2_followup_rate",
+        "coef": -1.2858
+      },
+      {
+        "name": "d6_fake_prob_mean",
+        "coef": 1.0109
+      },
+      {
+        "name": "d4_mean_temp",
+        "coef": 0.817
+      },
+      {
+        "name": "d4_elicit_mean",
+        "coef": 0.628
+      },
+      {
+        "name": "d2_user_turns_per_session",
+        "coef": -0.6273
+      },
+      {
+        "name": "d7_mean_concurrent_sessions",
+        "coef": -0.5947
+      },
+      {
+        "name": "d1_max_dup",
+        "coef": 0.4342
+      },
+      {
+        "name": "d3_repo_entropy",
+        "coef": 0.398
+      },
+      {
+        "name": "d2_stop_end_frac",
+        "coef": -0.3943
+      },
+      {
+        "name": "d3_topic_entropy",
+        "coef": 0.3846
+      },
+      {
+        "name": "d7_req_per_active_hour",
+        "coef": 0.3662
+      },
+      {
+        "name": "d3_distinct_repos",
+        "coef": -0.3489
+      },
+      {
+        "name": "d4_elicit_max",
+        "coef": 0.3036
+      },
+      {
+        "name": "d3_sessions_per_repo",
+        "coef": -0.1975
+      },
+      {
+        "name": "d6_contradiction_session_frac",
+        "coef": -0.1922
+      },
+      {
+        "name": "d5_skeletons_per_session",
+        "coef": -0.1613
+      },
+      {
+        "name": "d5_template_mass",
+        "coef": 0.1528
+      },
+      {
+        "name": "d6_contradictions_per_100",
+        "coef": -0.1412
+      },
+      {
+        "name": "d5_top_skeleton_frac",
+        "coef": 0.1396
+      },
+      {
+        "name": "d7_active_hours_per_day",
+        "coef": 0.1291
+      },
+      {
+        "name": "d4_elicit_frac",
+        "coef": 0.1279
+      },
+      {
+        "name": "d1_cross_account_dup_rate",
+        "coef": -0.0925
+      },
+      {
+        "name": "d1_branch_frac",
+        "coef": -0.0621
+      },
+      {
+        "name": "d2_correction_rate",
+        "coef": -0.0607
+      },
+      {
+        "name": "d1_branch_factor",
+        "coef": -0.0541
+      },
+      {
+        "name": "d7_user_field_frac",
+        "coef": -0.0496
+      },
+      {
+        "name": "d7_distinct_users",
+        "coef": -0.0423
+      },
+      {
+        "name": "d7_max_concurrent_sessions",
+        "coef": -0.0397
+      },
+      {
+        "name": "d2_return_rate",
+        "coef": -0.0263
+      },
+      {
+        "name": "d1_hot_dup_rate",
+        "coef": 0.0236
+      },
+      {
+        "name": "d4_max_effort_frac",
+        "coef": 0.0191
+      },
+      {
+        "name": "d4_max_tokens_frac",
+        "coef": 0.0191
+      },
+      {
+        "name": "d4_n_gt1_rate",
+        "coef": 0.0
+      }
+    ],
+    "val_auc": 1.0,
+    "request_rows": 200000,
+    "request_coefficients": [
+      {
+        "name": "req_dup_count",
+        "coef": 11.4916
+      },
+      {
+        "name": "req_user_present",
+        "coef": -4.9543
+      },
+      {
+        "name": "req_temperature",
+        "coef": 2.7664
+      },
+      {
+        "name": "req_max_tokens",
+        "coef": 0.5918
+      },
+      {
+        "name": "req_elicitation",
+        "coef": 0.4205
+      },
+      {
+        "name": "req_n",
+        "coef": 0.0
+      }
+    ]
+  }
+}

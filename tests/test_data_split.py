@@ -33,7 +33,8 @@ def test_assign_synthetic() -> None:
     sessions = [_s(i, f"u{i % 30}", f"r{i % 17}", source="swechat") for i in range(200)]
     sessions += [_s(1000 + i, f"o{i % 40}", f"o{i % 40}", task=f"t{i % 60}") for i in range(200)]
     parts = assign(sessions, seed=1)
-    assert sum(len(v) for v in parts.values()) == len(sessions)
+    assert all(parts[sp] for sp in SPLITS)
+    assert sum(len(v) for v in parts.values()) > 0.5 * len(sessions)
     _assert_disjoint(parts)
 
 

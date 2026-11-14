@@ -18,6 +18,24 @@ Start time (UTC): 2026-11-14T08:02:05Z (see `.build_clock`).
 - D-11. M1 uses six subagents, not four. We split WS-B into B1 (simulator and generators) and B2 (lab and agent chat). We split WS-C into C1 (detectors) and C2 (worker, account model, campaigns, server). This gives more parallel work.
 - D-12. The lab clock controls simulation time: `sim_now = epoch_start + (real_now - lab_start) * speed`. Each generator reads the lab time at start and shifts its scenario to that time. Thus two generators share one time axis.
 
+- D-13. Data: SWE-chat has 11,537 canonical sessions. We dropped sessions with no user turn or no tool call. Open-SWE has 12,000 sessions. The cross-harness slice has 800 rows.
+- D-14. Split method: one connected group of users and repos holds 83% of SWE-chat. Pure group components gave the validation split no SWE-chat. We assign users to splits greedily. Each repo and task stays in the split that uses it most. We dropped 1,794 SWE-chat sessions that had a conflict. No group, repo, or task is in two splits.
+- D-15. Splits (Open-SWE + SWE-chat): train 7,200 + 6,502; val 2,400 + 1,547; holdout 2,400 + 1,694. The cross-harness slice keeps 149 sessions. Most cross-harness repos also occur in train or val, so we removed them.
+- D-16. Final scaffold strip list (after 3 rounds of n-gram mining): `OBSERVATION:\n`, `[Request interrupted by user for tool use]`, `[Request interrupted by user]`, ` (file state is current in your context — no need to Read it back)`, `Review the changes and make sure they are as expected. Edit the file again if necessary.`, `Your command ran successfully and did not produce any output.`, `(Bash completed with no output)`. All Open-SWE wrapper fragments are removed. Write and edit success messages become `OK`. `ls -l` owner, group, size, and date columns become placeholders. `scaleswe` becomes `main`. After round 3, the remaining n-grams are task content and model habits.
+- D-17. `other` tool calls (TodoWrite, Task, MCP, WebFetch, submit) are dropped with their results. LS and SWE-agent directory views stay as `other {path}`.
+- D-18. Known source signal: the tool mix differs by source. Open-SWE has no `search` or `write` calls and one user turn per session. The benchmark persona (normal, Open-SWE data) and the stealth persona (attack, mixed with SWE-chat) are the hard cases that break the link between source and label. The leakage controls measure it.
+- D-19. `write_jsonl` drops any session that still contains a forbidden string (`FORBIDDEN` in `dw/data/normalize.py`). Control 1 found 0 dirty records after the final build.
+- D-20. We cut the D5 LLM template inversion (cut list item 2). The watchdog cannot know the data source of a prompt, and stealth accounts carry SWE-chat text. SWE-chat text must not go to an external API. The template now comes from the frequent masked skeleton lines, with `{str}`, `{path}`, `{num}`, `{id}`, and `{task}` slots. No LLM call is necessary.
+- D-21. We renamed the D6 detector from `d6_fake_env` to `d6_environment`. A detector name must not look like a persona label in the UI.
+- D-22. The lab gateway: 704 requests per second, `handle()` p50 0.30 ms and p95 0.75 ms (5,000 replay requests, concurrency 64, without the watchdog). The load-test client uses 4 processes. One process reached only 275 requests per second because the client used 100% CPU.
+- D-23. The lab emits an event for every request, also for 403 responses. Inline flags are `dup`, `dup_hot`, and `cross_dup`. `DW_LIVE_FIXTURE` makes the live backend return a recorded response (for the smoke test).
+- D-24. The agent shell runs with `PATH`, `HOME=<workspace>`, and `LANG` only. A command can still read files outside the workspace (for example `../.env`). Only the approval click protects against this. This is a stated limit.
+- D-25. The worker does not give requests that the lab blocked to the detectors. A missing feature counts as the training mean (zero contribution).
+- D-26. The D2 correction threshold is 0.75, not 0.72. With bge-small, corrections score 0.68–0.90 and other follow-ups 0.56–0.73.
+- D-27. The sender spreads 64 in-flight requests over 16 small HTTP clients. One large client pool reached only about 180 requests per second.
+- D-28. The label-permutation control reports the mean AUC and a permutation p-value. With unequal classes, the mean AUC of a shuffled model can be far from 0.5 on small sets.
+- D-29. LLM cost for the data build: about USD 2.36 on the helper model. No SWE-chat text went to OpenRouter.
+
 ## Milestones
 
 | Milestone | Plan | Actual | Note |
