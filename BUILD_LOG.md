@@ -49,6 +49,12 @@ Start time (UTC): 2026-11-14T08:02:05Z (see `.build_clock`).
 
 ## Problems
 
+- P-00. Claude Code ran from Windows with the working directory `\\wsl.localhost\...`. When the Ubuntu instance was stopped, Windows could not reach this path, and tool calls failed. Run Claude Code inside WSL.
+
+- P-01. Training time. The limit is 10 CPU minutes. A clean training run (empty embedding cache) took 922 s of wall time and about 68 CPU minutes on this machine (12 cores, WSL). The scenario replays through the full worker and the bge-small embeddings use most of the time. A second run with the embedding cache takes less time. `reports/compute.json` has the values of the last run. We did not meet this limit.
+- P-02. Two training runs did not finish. Run A (4 parallel scenario processes and a test run): the Linux out-of-memory killer stopped one worker (4.0 GB). The WSL machine had 15.8 GB. Run B (2 processes, started with `setsid`): WSL stopped the idle Ubuntu instance when no `wsl.exe` session was attached, and this stopped the job. The kernel log shows no memory problem for run B. Changes: WSL now has 24 GB of memory and 8 GB of swap (`.wslconfig`). `train.processes` is 3. Run long jobs in an attached session.
+- P-03. Format probe (control 2): AUC 0.999 on the holdout. The target is below 0.70. The largest features are markdown headings and inline code in user text, the number of user turns, and the number of tool results. Open-SWE prompts are GitHub issue texts with markdown. SWE-chat prompts are chat messages. This is a difference in task type and session shape, not a harness string. More scaffold stripping cannot remove it. The README reports the value.
+
 ## Reviewer findings
 
 Reviewer 1: ML audit (adversarial). Reviewer 2: code review. Reviewer 3: demo walkthrough.
@@ -64,10 +70,10 @@ Reviewer 1: ML audit (adversarial). Reviewer 2: code review. Reviewer 3: demo wa
 | R1-L1 | ML | Low | Validation uses the train templates. | Recorded. Validation thresholds are optimistic. |
 | R1-L2 | ML | Low | D7 timing features are fully simulated. | Recorded. The README table shows the origin of each signal. |
 | R2-1 | Code | High | `.gitignore` pattern `data/` also ignored `dw/data/`. The data pipeline was not committed. | Fixed. The patterns are anchored (`/data/`). `dw/data/` is committed. |
-| R2-2 | Code | High | Cross-site request forgery on the agent chat: a foreign page could approve a shell command. Approval IDs were sequential. | Fixed (see below). |
-| R2-3 | Code | Medium | A path with a NUL byte broke the agent session. | Fixed (see below). |
-| R2-4 | Code | Medium | Case files sent evidence summaries (they can contain SWE-chat text) to the helper model. | Fixed (see below). |
-| R2-5 | Code | Medium | The lab sent any request without `x_replay` to the live backend, for any account. | Fixed (see below). |
+| R2-2 | Code | High | Cross-site request forgery on the agent chat: a foreign page could approve a shell command. Approval IDs were sequential. | Fixed. A POST with a foreign `Origin` gets 403. A POST that is not JSON gets 415. Approval IDs are random (`secrets.token_urlsafe`). |
+| R2-3 | Code | Medium | A path with a NUL byte broke the agent session. | Fixed. The sandbox refuses the path. A tool error always adds a tool result to the history. |
+| R2-4 | Code | Medium | Case files sent evidence summaries (they can contain SWE-chat text) to the helper model. | Fixed. The LLM prompt has only evidence IDs, detector names, weights, counts, and feature values. The full summaries are added locally. |
+| R2-5 | Code | Medium | The lab sent any request without `x_replay` to the live backend, for any account. | Fixed. Only the agent-chat account can use the live backend. Other accounts get 400. |
 | R2-6 | Code | Medium | The agent shell can read `../.env`. | Recorded as a limit (D-24, README Limits). |
-| R2-7 | Code | Low | `bool("false")` is true in the approval handler. | Fixed (see below). |
+| R2-7 | Code | Low | `bool("false")` is true in the approval handler. | Fixed. Only the JSON value `true` approves a command. |
 | R2-8..13 | Code | Low | DRY (two `ChatClient` protocols), the dashboard mock server, an unused config key, a long `create_app`, gzip size limit, ASD-STE100 passive voice. | Recorded. Not fixed in the time box, except the documentation sentences. |
