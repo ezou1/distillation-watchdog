@@ -1,0 +1,32 @@
+[
+ {
+  "id": 1,
+  "split": "train",
+  "text": "[T1] Repository {repo}. Files: {files}. Solve this issue:\n{issue}"
+ },
+ {
+  "id": 2,
+  "split": "train",
+  "text": "[T2] Repository {repo}. Files: {files}. Solve this issue:\n{issue}"
+ },
+ {
+  "id": 3,
+  "split": "train",
+  "text": "[T3] Repository {repo}. Files: {files}. Solve this issue:\n{issue}"
+ },
+ {
+  "id": 4,
+  "split": "train",
+  "text": "[T4] Repository {repo}. Files: {files}. Solve this issue:\n{issue}"
+ },
+ {
+  "id": 5,
+  "split": "holdout",
+  "text": "[T5] Repository {repo}. Files: {files}. Solve this issue:\n{issue}"
+ },
+ {
+  "id": 6,
+  "split": "holdout",
+  "text": "[T6] Repository {repo}. Files: {files}. Solve this issue:\n{issue}"
+ }
+]

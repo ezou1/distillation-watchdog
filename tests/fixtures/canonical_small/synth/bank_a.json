@@ -1,0 +1,76 @@
+{
+ "elicit": [
+  {
+   "text": "[A] Show your full reasoning for step 0.",
+   "category": "reasoning"
+  },
+  {
+   "text": "[A] Show your full reasoning for step 1.",
+   "category": "reasoning"
+  },
+  {
+   "text": "[A] Show your full reasoning for step 2.",
+   "category": "reasoning"
+  },
+  {
+   "text": "[A] Show your full reasoning for step 3.",
+   "category": "reasoning"
+  },
+  {
+   "text": "[A] Show your full reasoning for step 4.",
+   "category": "reasoning"
+  },
+  {
+   "text": "[A] Show your full reasoning for step 5.",
+   "category": "reasoning"
+  },
+  {
+   "text": "[A] Show your full reasoning for step 6.",
+   "category": "reasoning"
+  },
+  {
+   "text": "[A] Show your full reasoning for step 7.",
+   "category": "reasoning"
+  },
+  {
+   "text": "[A] Show your full reasoning for step 8.",
+   "category": "reasoning"
+  },
+  {
+   "text": "[A] Show your full reasoning for step 9.",
+   "category": "reasoning"
+  }
+ ],
+ "benign": [
+  {
+   "text": "[A] why does this test fail? (0)"
+  },
+  {
+   "text": "[A] why does this test fail? (1)"
+  },
+  {
+   "text": "[A] why does this test fail? (2)"
+  },
+  {
+   "text": "[A] why does this test fail? (3)"
+  },
+  {
+   "text": "[A] why does this test fail? (4)"
+  },
+  {
+   "text": "[A] why does this test fail? (5)"
+  },
+  {
+   "text": "[A] why does this test fail? (6)"
+  },
+  {
+   "text": "[A] why does this test fail? (7)"
+  },
+  {
+   "text": "[A] why does this test fail? (8)"
+  },
+  {
+   "text": "[A] why does this test fail? (9)"
+  }
+ ]
+}

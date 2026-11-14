@@ -1,0 +1,87 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Traffic generator</title>
+<style>
+  body { font-family: system-ui, sans-serif; margin: 2rem; background: #f7f7f8; color: #222; }
+  h1 { font-size: 1.3rem; }
+  .controls { margin: 1rem 0; display: flex; gap: 1rem; align-items: center; }
+  table { border-collapse: collapse; background: #fff; min-width: 640px; }
+  th, td { padding: .45rem .8rem; border-bottom: 1px solid #e3e3e6; text-align: right; }
+  th:first-child, td:first-child { text-align: left; }
+  button { padding: .3rem .9rem; cursor: pointer; }
+  .on { color: #0a7d32; font-weight: 600; }
+  .off { color: #888; }
+  .blocked { color: #b3261e; }
+  #err { color: #b3261e; margin-top: 1rem; }
+</style>
+</head>
+<body>
+<h1 id="title">Traffic generator</h1>
+<div class="controls">
+  <label>Scale <select id="scale"><option>small</option><option selected>demo</option><option>full</option></select></label>
+  <label>Speed <input id="speed" type="number" min="1" step="60" value="600" style="width:6rem"></label>
+  <span id="simtime"></span>
+</div>
+<table>
+  <thead><tr><th>Persona</th><th>State</th><th>Accounts</th><th>Sent</th><th>Served</th><th>Blocked</th><th>Leaked</th><th></th></tr></thead>
+  <tbody id="rows"></tbody>
+</table>
+<div id="err"></div>
+<script>
+const TITLES = {solo_dev: "Solo developers", saas_app: "SaaS app", benchmark_runner: "Benchmark runner",
+                hydra: "Hydra", fake_env: "Fake-env", stealth: "Stealth"};
+let first = true;
+
+async function post(path, body) {
+  const resp = await fetch(path, {method: "POST", headers: {"Content-Type": "application/json"}, body: JSON.stringify(body)});
+  document.getElementById("err").textContent = resp.ok ? "" : "Request failed: " + resp.status + " " + await resp.text();
+  refresh();
+}
+
+function toggle(persona, running) {
+  if (running) return post("/api/stop", {persona});
+  return post("/api/start", {persona, scale: document.getElementById("scale").value,
+                             speed: Number(document.getElementById("speed").value)});
+}
+
+function cell(text, cls) {
+  const td = document.createElement("td");
+  td.textContent = text;
+  if (cls) td.className = cls;
+  return td;
+}
+
+async function refresh() {
+  let st;
+  try { st = await (await fetch("/api/status")).json(); } catch (e) { return; }
+  document.getElementById("title").textContent = st.role[0].toUpperCase() + st.role.slice(1) + " traffic generator";
+  if (first) {
+    document.getElementById("scale").value = st.scale;
+    document.getElementById("speed").value = st.speed;
+    first = false;
+  }
+  document.getElementById("simtime").textContent = st.sim_time
+    ? "Simulation time: " + new Date(st.sim_time * 1000).toISOString().replace("T", " ").slice(0, 19) + " UTC" : "";
+  const rows = document.getElementById("rows");
+  rows.replaceChildren();
+  for (const [name, c] of Object.entries(st.personas)) {
+    const tr = document.createElement("tr");
+    tr.append(cell(TITLES[name] || name), cell(c.running ? "running" : "stopped", c.running ? "on" : "off"),
+              cell(c.accounts), cell(c.sent), cell(c.served), cell(c.blocked, c.blocked ? "blocked" : ""), cell(c.leaked));
+    const td = document.createElement("td");
+    const btn = document.createElement("button");
+    btn.textContent = c.running ? "Stop" : "Start";
+    btn.onclick = () => toggle(name, c.running);
+    td.append(btn);
+    tr.append(td);
+    rows.append(tr);
+  }
+}
+
+refresh();
+setInterval(refresh, 1000);
+</script>
+</body>
+</html>

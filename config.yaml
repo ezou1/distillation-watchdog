@@ -44,6 +44,7 @@ fetch:
   openswe_xharness_split: sweagent
   openswe_rows: 12000
   openswe_xharness_rows: 800
+  duckdb_memory: 3GB             # memory limit for the SWE-chat conversations query
 
 normalize:
   max_tool_chars: 2000
@@ -53,12 +54,18 @@ normalize:
   ngram_other_max_frac: 0.01
   ngram_top: 200
   ngram_max_rounds: 3
+  ngram_sample: 2000            # sessions per source read by the n-gram mining
+  ngram_pass1: 200              # sessions per source used to find candidate n-grams
+  swechat_max_sessions: null    # null = all Claude Code sessions
+  repo_root_min_cover: 0.6      # SWE-chat repo root: deepest folder that holds this share of file paths
 
 split:
   seed: 1234
   train: 0.6
   val: 0.2
   holdout: 0.2
+  timing_max_think_s: 21600     # user think gaps above 6 h are breaks, not think time
+  timing_max_step_s: 600        # model and tool gaps above 10 min are not used in the fit
 
 synth:
   fake_frac: 0.4
@@ -69,6 +76,11 @@ synth:
   bank_dedup_cos: 0.85
   seed_a: 11
   seed_b: 22
+  seed: 5                       # selection of fake-env and stealth sessions
+  context_chars: 1200           # chars of each context message in a fake-output prompt
+  fake_max_tokens: 700
+  bank_batch: 15                # items asked for in one bank generation call
+  bank_overgen: 1.4             # generate this factor more items than needed, before dedup
 
 sim:
   epoch_start: 1767571200      # 2026-01-05 00:00 UTC, simulation time origin
@@ -88,8 +100,10 @@ sim:
       sessions_per_account: [80, 160]
       end_users_per_account: [20, 60]
       temperature: [0.2, 0.4]
+      product_template: "[DevPilot] Customer request from the DevPilot web app:\n{prompt}\n\nAnswer as the DevPilot coding assistant."
     benchmark_runner:
       tasks: 150
+      tasks_per_account: 50      # 3 accounts x 50 = 150 tasks
       attempts: [1, 3]
       temperature: [0.0, 0.2]
       quota: 20000
@@ -100,6 +114,7 @@ sim:
       reasoning_effort: high
       elicit_rate: 0.6
       start_jitter_s: 90
+      cron_interval_s: 3600     # time between synchronized start waves
       sessions_per_account: [3, 8]
     fake_env:
       best_of_n: [2, 4]
@@ -108,6 +123,7 @@ sim:
       reasoning_effort: high
       elicit_rate: 0.5
       start_jitter_s: 90
+      cron_interval_s: 3600
       sessions_per_account: [3, 8]
     stealth:
       best_of_n: 2
@@ -116,14 +132,22 @@ sim:
       swechat_mix: 0.3
       followups: [1, 2]
       sessions_per_account: [3, 8]
+      timing_jitter: 0.2        # +- change of the lognormal mu per account (human timing)
   normal_max_tokens: [1024, 8192]
   max_tokens_cap: 32768
   train_randomization: 0.3      # +- fraction applied to persona ranges in training scenarios
+  copy_spread_s: 2.0            # best-of-n copies of one request arrive within this time
+  bench_gap_s: [5, 30]          # gap between benchmark sessions
+  send_timeout_s: 30
+  client_pool: 16               # httpx clients that share max_in_flight (one big pool is slow)
 
 lab:
   ingest_interval_s: 0.2
   ingest_buffer_max: 20000
   blocklist_interval_s: 1.0
+  stats_window: 5000            # handle() latencies kept for p50/p95
+  rps_window_s: 5.0             # time window for requests per second
+  load_client_procs: 4          # load test client processes (one Python client is slower than the lab)
 
 watchdog:
   queue_max: 50000
@@ -132,31 +156,69 @@ watchdog:
   campaign_interval_s: 10.0
   offline_rescore_every: 200     # events between rescoring in offline mode
   offline_campaign_every: 1000   # events between campaign runs in offline mode
+  memory_events: 200000         # recent events kept in memory for evidence lookup
+  ingest_chunk: 200              # events per worker step before it yields to the event loop
+  rate_bucket_s: 60              # sim-time bucket of the rate history
+  rate_history_max: 240          # buckets kept
+  history_max: 300               # score history points per account
+  evidence_per_account_max: 2000
+  evidence_list_max: 200         # evidence items in GET /api/accounts/{id}
+  recent_blocks: 10
+  sse_interval_s: 1.0
+  term_interval_s: 1.0
 
 detectors:
+  evidence_first: 3             # evidence items per account and kind: the first N ...
+  evidence_every: 25            # ... and then every Mth item
   d1:
     high_temp: 0.9
+    dup_evidence_min: 3         # evidence when one context reaches this copy count
   d2:
-    correction_threshold: 0.72
+    correction_threshold: 0.75     # bge-small: corrections 0.68-0.90, other follow-ups 0.56-0.73
     return_gap_days: 1.0
+    correction_prototypes:
+      - "no, that is wrong"
+      - "that did not work"
+      - "this is still failing"
+      - "you broke the tests"
+      - "that is not what I asked for"
+      - "revert that change"
+      - "the error is still there"
+      - "try a different approach"
+      - "you misunderstood the problem"
+      - "undo your last edit"
   d3:
     kmeans_k: 50
+    repo_jaccard: 0.2           # path-set similarity to join a session to a repository
+    seed: 0
   d4:
     max_tokens_frac_of_cap: 0.99
+    max_effort_values: [high, xhigh]
+    elicit_threshold: 0.5       # a user message above this score counts as elicitation
+    evidence_score: 0.8
+    lr_C: 4.0
+    keyword_top: 20
+    keyword_ngrams: [2, 4]
   d5:
     skeleton_min_frac: 0.30
     min_sessions: 5
     inversion_prompts: 10
+    min_line_tokens: 3          # ignore masked lines with fewer tokens
   d6:
     ws_normalize: true
+    snippet_chars: 60
+    lr_C: 4.0
   d7:
     active_hour_min_requests: 1
+    concurrency_window_s: 300
+    hour_evidence_requests: 120 # evidence when one hour has this many requests
 
 account:
   min_requests: 30
   block_max_fpr: 0.01
   review_max_fpr: 0.05
   logreg_C: 1.0
+  class_weight: balanced
   train_seeds: [101, 102, 103]
   val_seed: 201
   holdout_seed: 301
@@ -172,6 +234,8 @@ campaign:
     rare_schema: 0.3
   min_edge_weight: 0.5
   louvain_seed: 7
+  skeleton_min_words: 3          # masked prompt lines shorter than this are not template lines
+  evidence_tasks: 3              # shared-task evidence items per campaign
   block_threshold: 1.5
   review_threshold: 1.0
 
@@ -182,12 +246,24 @@ agent:
   output_max_chars: 10000
   temperature: 0.2
   max_tokens: 4096
+  lab_timeout_s: 300            # agent wait for one lab response
+  max_files_listed: 500
 
 casefile:
   top_evidence: 15
   max_tokens: 1200
+  temperature: 0.2
+  top_contributions: 8
 
 eval:
+  scale: full                   # holdout scenario scale
   requests_per_day: 10000000
   load_requests: 5000
   load_concurrency: 64
+
+train:
+  scenario_scale: demo          # scale of the train and validation scenarios
+  prompt_chars: 1500
+  elicit_prompts: 3000
+  realism_neg_ratio: 2
+  request_rows_max: 200000

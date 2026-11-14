@@ -1,0 +1,29 @@
+{
+ "id": "gen-fixture-final-0001",
+ "object": "chat.completion",
+ "created": 1794643410,
+ "model": "qwen/qwen3-coder-next",
+ "provider": "Parasail",
+ "system_fingerprint": null,
+ "choices": [
+  {
+   "index": 0,
+   "logprobs": null,
+   "finish_reason": "stop",
+   "native_finish_reason": "stop",
+   "message": {
+    "role": "assistant",
+    "content": "The README describes the project. The work is done.",
+    "refusal": null,
+    "reasoning": null
+   }
+  }
+ ],
+ "usage": {
+  "prompt_tokens": 320,
+  "completion_tokens": 12,
+  "total_tokens": 332,
+  "cost": 0.0,
+  "is_byok": false
+ }
+}

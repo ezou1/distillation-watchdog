@@ -13,3 +13,4 @@ logs/
 models/
 tests/fixtures/private/
 .pytest_cache/
+.tmp/

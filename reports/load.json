@@ -1,0 +1,19 @@
+{
+  "requests": 5000,
+  "concurrency": 64,
+  "client_procs": 4,
+  "seconds": 7.106,
+  "rps": 703.7,
+  "statuses": {
+    "200": 5000
+  },
+  "client_p50_ms": 51.38,
+  "client_p95_ms": 143.95,
+  "lab_handle_p50_ms": 0.3,
+  "lab_handle_p95_ms": 0.749,
+  "watchdog_connected": false,
+  "target": {
+    "rps_min": 300,
+    "handle_p95_ms_max": 5.0
+  }
+}

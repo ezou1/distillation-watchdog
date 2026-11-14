@@ -1,0 +1,170 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Agent chat</title>
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<style>
+  body { margin: 0; font: 16px/1.5 system-ui, sans-serif; background: #fff; color: #111; }
+  header { display: flex; gap: 16px; align-items: center; padding: 10px 16px; background: #111; color: #fff; }
+  header h1 { font-size: 18px; margin: 0; flex: 1; }
+  header label { cursor: pointer; }
+  button { font: inherit; padding: 6px 14px; border: 2px solid #111; background: #fff; color: #111; cursor: pointer; border-radius: 4px; }
+  button.primary { background: #0b3d91; border-color: #0b3d91; color: #fff; }
+  button.danger { background: #a00000; border-color: #a00000; color: #fff; }
+  button:disabled { opacity: 0.5; cursor: wait; }
+  header button { border-color: #fff; }
+  main { display: grid; grid-template-columns: 1fr 260px; gap: 16px; padding: 16px; max-width: 1200px; margin: auto; }
+  #help { background: #f2f2f2; border-left: 4px solid #0b3d91; padding: 8px 12px; margin-bottom: 12px; }
+  #help p { margin: 4px 0; }
+  .msg { margin: 10px 0; padding: 8px 12px; border-radius: 4px; white-space: pre-wrap; word-wrap: break-word; }
+  .user { background: #e6eefc; border: 1px solid #0b3d91; }
+  .assistant { background: #fafafa; border: 1px solid #555; }
+  .role { font-weight: bold; font-size: 13px; text-transform: uppercase; display: block; }
+  details { margin: 6px 0; border: 1px solid #555; border-radius: 4px; padding: 4px 8px; background: #fff; }
+  summary { cursor: pointer; font-family: ui-monospace, monospace; font-size: 14px; }
+  pre { margin: 6px 0; white-space: pre-wrap; word-wrap: break-word; font: 13px/1.4 ui-monospace, monospace; background: #f4f4f4; padding: 6px; max-height: 400px; overflow: auto; }
+  .card { border: 3px solid #a00000; background: #fff4f4; padding: 10px; border-radius: 4px; margin: 10px 0; }
+  .card pre { background: #fff; border: 1px solid #a00000; }
+  .status { font-weight: bold; margin: 8px 0; }
+  .error { color: #a00000; font-weight: bold; }
+  form { display: flex; gap: 8px; margin-top: 12px; }
+  textarea { flex: 1; font: inherit; padding: 8px; border: 2px solid #111; border-radius: 4px; min-height: 60px; }
+  aside h2 { font-size: 16px; margin: 0 0 8px; }
+  aside ul { list-style: none; padding: 0; margin: 0; font: 14px ui-monospace, monospace; }
+  aside li { padding: 2px 0; border-bottom: 1px solid #ddd; display: flex; justify-content: space-between; gap: 8px; }
+</style>
+</head>
+<body>
+<header>
+  <h1>Agent chat</h1>
+  <label><input type="checkbox" id="tools" checked> Tools on</label>
+  <button id="newSession" type="button">New session</button>
+</header>
+<main>
+  <section>
+    <div id="help">
+      <p>Type a task and push <b>Send</b>. The agent uses a model through the lab.</p>
+      <p>When <b>Tools on</b> is set, the agent can read, write, and edit files in the sandbox folder. When it is clear, the agent is a plain chatbot.</p>
+      <p>Before the agent runs a shell command, it stops. Read the command. Push <b>Approve</b> to run it. Push <b>Reject</b> to stop it.</p>
+      <p>Push <b>New session</b> to start a new conversation. The sandbox files stay.</p>
+    </div>
+    <div id="log"></div>
+    <div id="state" class="status"></div>
+    <form id="form">
+      <textarea id="input" placeholder="Type your message. Push Ctrl+Enter to send."></textarea>
+      <button class="primary" id="send" type="submit">Send</button>
+    </form>
+  </section>
+  <aside>
+    <h2>Sandbox files</h2>
+    <ul id="files"></ul>
+  </aside>
+</main>
+<script>
+"use strict";
+const $ = (id) => document.getElementById(id);
+let busy = false;
+
+function el(tag, attrs, ...children) {
+  const node = document.createElement(tag);
+  for (const [k, v] of Object.entries(attrs || {})) {
+    if (k === "onclick") node.onclick = v; else node.setAttribute(k, v);
+  }
+  for (const c of children) node.append(c);
+  return node;
+}
+
+function toolBlock(call, result) {
+  const args = call.name === "run_shell" ? call.arguments.command : JSON.stringify(call.arguments, null, 2);
+  const det = el("details", {}, el("summary", {}, "Tool: " + call.name + (result ? "" : " (waiting)")),
+                 el("pre", {}, String(args)));
+  if (result) det.append(el("div", {}, "Output:"), el("pre", {}, result.content));
+  return det;
+}
+
+function render(data) {
+  const log = $("log");
+  log.replaceChildren();
+  const results = {};
+  for (const m of data.messages) if (m.role === "tool") results[m.tool_call_id] = m;
+  for (const m of data.messages) {
+    if (m.role === "user") {
+      log.append(el("div", {class: "msg user"}, el("span", {class: "role"}, "You"), m.content));
+    } else if (m.role === "assistant") {
+      const box = el("div", {class: "msg assistant"}, el("span", {class: "role"}, "Agent"));
+      if (m.content) box.append(m.content);
+      for (const c of m.tool_calls || []) box.append(toolBlock(c, results[c.id]));
+      log.append(box);
+    }
+  }
+  if (data.pending) log.append(approvalCard(data.pending));
+  const words = {idle: "", done: "", awaiting_approval: "The agent waits for your approval.",
+                 step_limit: "The agent stopped at the step limit.", error: "Error."};
+  $("state").replaceChildren(words[data.status] || "");
+  if (data.error) $("state").append(el("div", {class: "error"}, data.error));
+  window.scrollTo(0, document.body.scrollHeight);
+}
+
+function approvalCard(p) {
+  const decide = (ok) => post("/api/approve", {approval_id: p.approval_id, approve: ok});
+  return el("div", {class: "card"},
+    el("b", {}, "The agent wants to run this shell command in the sandbox:"),
+    el("pre", {}, p.command),
+    el("button", {class: "primary", type: "button", onclick: () => decide(true)}, "Approve"), " ",
+    el("button", {class: "danger", type: "button", onclick: () => decide(false)}, "Reject"));
+}
+
+function setBusy(on) {
+  busy = on;
+  for (const b of document.querySelectorAll("button")) b.disabled = on;
+  if (on) $("state").replaceChildren("The agent works. Wait.");
+}
+
+async function post(url, body) {
+  if (busy) return;
+  setBusy(true);
+  try {
+    const resp = await fetch(url, {method: "POST", headers: {"Content-Type": "application/json"},
+                                   body: JSON.stringify(body || {})});
+    const data = await resp.json();
+    if (data.messages) render(data);
+  } catch (err) {
+    $("state").replaceChildren(el("div", {class: "error"}, "Request failed: " + err));
+  } finally {
+    setBusy(false);
+    loadFiles();
+  }
+}
+
+async function loadFiles() {
+  try {
+    const data = await (await fetch("/api/files")).json();
+    $("files").replaceChildren(...data.files.map(f => el("li", {}, el("span", {}, f.path), el("span", {}, f.size + " B"))));
+    if (!data.files.length) $("files").append(el("li", {}, "(no files)"));
+  } catch (err) { /* the list stays as it is */ }
+}
+
+async function loadSession() {
+  const data = await (await fetch("/api/session")).json();
+  render(data);
+}
+
+$("form").onsubmit = (e) => {
+  e.preventDefault();
+  const text = $("input").value.trim();
+  if (!text || busy) return;
+  $("input").value = "";
+  $("log").append(el("div", {class: "msg user"}, el("span", {class: "role"}, "You"), text));
+  post("/api/chat", {message: text, tools: $("tools").checked});
+};
+$("input").onkeydown = (e) => { if (e.key === "Enter" && e.ctrlKey) $("form").requestSubmit(); };
+$("newSession").onclick = async () => {
+  await post("/api/session/new");
+  await loadSession();
+};
+loadSession();
+loadFiles();
+</script>
+</body>
+</html>

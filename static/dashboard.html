@@ -1,0 +1,183 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Distillation Watchdog</title>
+<link rel="stylesheet" href="/static/dashboard.css">
+</head>
+<body>
+<header id="top">
+  <div class="brand">
+    <h1>Distillation Watchdog</h1>
+    <span id="conn" class="conn conn-wait">connecting</span>
+    <span id="simtime" class="simtime"></span>
+  </div>
+  <div class="counters" aria-label="Counters">
+    <div class="counter"><span class="cv" id="c-rps">-</span><span class="cl">req/s</span></div>
+    <div class="counter"><span class="cv" id="c-served">-</span><span class="cl">served</span></div>
+    <div class="counter"><span class="cv cv-block" id="c-blocked">-</span><span class="cl">blocked</span></div>
+    <div class="counter states">
+      <span class="chip st-normal" title="normal">normal <b id="c-normal">-</b></span>
+      <span class="chip st-review" title="review">review <b id="c-review">-</b></span>
+      <span class="chip st-block" title="block">block <b id="c-block">-</b></span>
+      <span class="chip st-disclosed" title="disclosed">disclosed <b id="c-disclosed">-</b></span>
+      <span class="chip st-insufficient" title="insufficient">insufficient <b id="c-insufficient">-</b></span>
+    </div>
+    <div class="counter"><span class="cv" id="c-campaigns">-</span><span class="cl">campaigns</span></div>
+  </div>
+</header>
+
+<div id="offline" class="offline" hidden>Watchdog offline. The page tries again every 2 seconds.</div>
+
+<nav class="tabs" role="tablist">
+  <button role="tab" class="tab active" data-tab="live">Live</button>
+  <button role="tab" class="tab" data-tab="account">Account</button>
+  <button role="tab" class="tab" data-tab="campaigns">Campaigns</button>
+  <button role="tab" class="tab" data-tab="eval">Evaluation</button>
+</nav>
+
+<main>
+  <!-- LIVE -->
+  <section id="tab-live" class="panel active">
+    <p class="help"><b>How to read this tab:</b> The chart shows the requests in each interval. Green is served. Red is blocked.
+      Each table row is one account. The score is from 0 to 1. A high score shows more signs of distillation.
+      Click a row to examine the account.</p>
+    <div class="live-grid">
+      <div class="card chart-card">
+        <h2>Request rate</h2>
+        <div class="chart-box"><canvas id="rate-chart"></canvas></div>
+      </div>
+      <div class="card feed-card">
+        <h2>Flags and blocks</h2>
+        <ol id="feed" class="feed"><li class="muted">No flags yet.</li></ol>
+      </div>
+    </div>
+    <div class="card">
+      <h2>Accounts <span class="muted small">(sorted by score)</span>
+        <label class="filter">State
+          <select id="state-filter">
+            <option value="">all</option><option>block</option><option>review</option>
+            <option>normal</option><option>disclosed</option><option>insufficient</option>
+          </select>
+        </label>
+      </h2>
+      <table class="tbl accounts">
+        <thead><tr><th>Account</th><th>State</th><th class="num">Score</th><th>Score history</th>
+          <th class="num">Requests</th><th>Campaign</th><th>Top reasons</th></tr></thead>
+        <tbody id="acct-body"><tr><td colspan="7" class="muted">Loading.</td></tr></tbody>
+      </table>
+    </div>
+  </section>
+
+  <!-- ACCOUNT -->
+  <section id="tab-account" class="panel">
+    <p class="help"><b>How to read this tab:</b> Red bars push the score up. Green bars push the score down.
+      The percentile compares the account with all accounts. Click an evidence item to see the exact request.</p>
+    <div id="acct-empty" class="card muted">Click an account in the Live tab.</div>
+    <div id="acct-view" hidden>
+      <div class="card acct-head">
+        <div>
+          <h2 id="a-name"></h2>
+          <div id="a-meta" class="meta"></div>
+        </div>
+        <div class="score-box"><span id="a-score" class="big-score"></span><span id="a-state" class="badge"></span></div>
+        <button id="a-casefile" class="btn">Generate case file</button>
+      </div>
+      <div class="acct-grid">
+        <div class="card">
+          <h2>Top feature contributions</h2>
+          <div class="chart-box tall"><canvas id="contrib-chart"></canvas></div>
+        </div>
+        <div class="card">
+          <h2>Feature values and population percentiles</h2>
+          <table class="tbl"><thead><tr><th>Feature</th><th class="num">Value</th><th>Percentile</th></tr></thead>
+            <tbody id="feat-body"></tbody></table>
+        </div>
+      </div>
+      <div class="card">
+        <h2>Evidence <span id="ev-count" class="muted small"></span></h2>
+        <ul id="ev-list" class="ev-list"></ul>
+      </div>
+      <div class="card" id="a-case-card" hidden>
+        <h2>Case file</h2>
+        <div id="a-case"></div>
+      </div>
+    </div>
+  </section>
+
+  <!-- CAMPAIGNS -->
+  <section id="tab-campaigns" class="panel">
+    <p class="help"><b>How to read this tab:</b> Each dot is one candidate account. The color shows the state.
+      A thick line shows a strong link between two accounts. Click a campaign or a dot to see the details.</p>
+    <div class="cmp-grid">
+      <div class="card">
+        <h2>Account graph</h2>
+        <div id="cy" class="cy"></div>
+        <div class="legend">
+          <span class="chip st-normal">normal</span><span class="chip st-review">review</span>
+          <span class="chip st-block">block</span><span class="chip st-disclosed">disclosed</span>
+          <span class="chip st-insufficient">insufficient</span>
+        </div>
+      </div>
+      <div class="card">
+        <h2>Campaigns</h2>
+        <table class="tbl"><thead><tr><th>Campaign</th><th>State</th><th class="num">Size</th><th class="num">Score</th>
+          <th class="num">Mean member score</th><th>Top link types</th></tr></thead>
+          <tbody id="cmp-body"><tr><td colspan="6" class="muted">No campaigns yet.</td></tr></tbody></table>
+      </div>
+    </div>
+    <div id="cmp-view" class="card" hidden>
+      <div class="acct-head">
+        <div><h2 id="c-name"></h2><div id="c-meta" class="meta"></div></div>
+        <button id="c-casefile" class="btn">Generate case file</button>
+      </div>
+      <h3>Template inversion</h3>
+      <pre id="c-template" class="template"></pre>
+      <div class="acct-grid">
+        <div>
+          <h3>Members</h3>
+          <table class="tbl"><thead><tr><th>Account</th><th>State</th><th class="num">Score</th></tr></thead>
+            <tbody id="c-members"></tbody></table>
+        </div>
+        <div>
+          <h3>Campaign evidence</h3>
+          <ul id="c-evidence" class="ev-list"></ul>
+        </div>
+      </div>
+      <h3>Links and their evidence</h3>
+      <table class="tbl"><thead><tr><th>Account</th><th>Account</th><th class="num">Weight</th><th>Types</th><th>Evidence</th></tr></thead>
+        <tbody id="c-edges"></tbody></table>
+      <div id="c-case-card" hidden>
+        <h3>Case file</h3>
+        <div id="c-case"></div>
+      </div>
+    </div>
+  </section>
+
+  <!-- EVALUATION -->
+  <section id="tab-eval" class="panel">
+    <p class="help"><b>How to read this tab:</b> The offline evaluation makes these numbers and images.
+      Only this tab uses the true labels. It shows them only as totals.
+      <button id="eval-reload" class="btn small-btn">Reload</button></p>
+    <div id="eval-key"></div>
+    <div id="eval-body" class="muted">Open this tab to load the evaluation.</div>
+    <div id="eval-images" class="images"></div>
+  </section>
+</main>
+
+<div id="modal" class="modal" hidden>
+  <div class="modal-box" role="dialog" aria-modal="true" aria-labelledby="m-title">
+    <div class="modal-head">
+      <h2 id="m-title">Evidence</h2>
+      <button id="m-close" class="btn" aria-label="Close">Close</button>
+    </div>
+    <div id="m-body" class="modal-body"></div>
+  </div>
+</div>
+
+<script src="/static/vendor/chart.umd.min.js"></script>
+<script src="/static/vendor/cytoscape.min.js"></script>
+<script src="/static/dashboard.js"></script>
+</body>
+</html>

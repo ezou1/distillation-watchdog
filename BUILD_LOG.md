@@ -15,10 +15,14 @@ Start time (UTC): 2026-11-14T08:02:05Z (see `.build_clock`).
 - D-09. Account IDs are the bearer keys. Keys are random (`acct-<hex>`). They do not contain the persona name. All accounts use the same pseudonym scheme.
 - D-10. We added `dw/common/chat.py` (tool schemas and OpenAI conversion) and `dw/common/scrub.py` (one scrub function). Both are shared by several components (DRY).
 
+- D-11. M1 uses six subagents, not four. We split WS-B into B1 (simulator and generators) and B2 (lab and agent chat). We split WS-C into C1 (detectors) and C2 (worker, account model, campaigns, server). This gives more parallel work.
+- D-12. The lab clock controls simulation time: `sim_now = epoch_start + (real_now - lab_start) * speed`. Each generator reads the lab time at start and shifts its scenario to that time. Thus two generators share one time axis.
+
 ## Milestones
 
 | Milestone | Plan | Actual | Note |
 |---|---|---|---|
+| M0 Preflight + contracts | 0:30 | 0:25 | Keys work. Both datasets are reachable. Contracts committed. 5 contract tests pass. |
 
 ## Cuts
 
