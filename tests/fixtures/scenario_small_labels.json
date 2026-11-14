@@ -1,0 +1,82 @@
+{
+ "acct-f252e6b438": {
+  "persona": "solo_dev",
+  "role": "normal"
+ },
+ "acct-38f9ebdacc": {
+  "persona": "solo_dev",
+  "role": "normal"
+ },
+ "acct-5f301850c5": {
+  "persona": "solo_dev",
+  "role": "normal"
+ },
+ "acct-72babced20": {
+  "persona": "solo_dev",
+  "role": "normal"
+ },
+ "acct-8ec3baea9e": {
+  "persona": "solo_dev",
+  "role": "normal"
+ },
+ "acct-fe93f448b3": {
+  "persona": "solo_dev",
+  "role": "normal"
+ },
+ "acct-ea6415479c": {
+  "persona": "saas_app",
+  "role": "normal"
+ },
+ "acct-20f3fe39c0": {
+  "persona": "benchmark_runner",
+  "role": "normal"
+ },
+ "acct-571c2442f9": {
+  "persona": "hydra",
+  "role": "attack"
+ },
+ "acct-0d99c94309": {
+  "persona": "hydra",
+  "role": "attack"
+ },
+ "acct-001a358ca0": {
+  "persona": "hydra",
+  "role": "attack"
+ },
+ "acct-269118bb16": {
+  "persona": "hydra",
+  "role": "attack"
+ },
+ "acct-19895fd7b3": {
+  "persona": "hydra",
+  "role": "attack"
+ },
+ "acct-5df2ee4e45": {
+  "persona": "hydra",
+  "role": "attack"
+ },
+ "acct-667691b06f": {
+  "persona": "fake_env",
+  "role": "attack"
+ },
+ "acct-f2be4c5ce6": {
+  "persona": "fake_env",
+  "role": "attack"
+ },
+ "acct-b915bd448f": {
+  "persona": "fake_env",
+  "role": "attack"
+ },
+ "acct-4a3678bc8d": {
+  "persona": "stealth",
+  "role": "attack"
+ },
+ "acct-3d804c25d6": {
+  "persona": "stealth",
+  "role": "attack"
+ },
+ "acct-96c38084a0": {
+  "persona": "stealth",
+  "role": "attack"
+ }
+}

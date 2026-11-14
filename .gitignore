@@ -1,0 +1,15 @@
+.env
+.env.*
+!.env.example
+data/
+cache/
+agent_workspace/
+*.sqlite
+*.sqlite-*
+.venv/
+__pycache__/
+*.pyc
+logs/
+models/
+tests/fixtures/private/
+.pytest_cache/
