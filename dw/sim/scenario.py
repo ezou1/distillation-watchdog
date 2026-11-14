@@ -318,6 +318,7 @@ class AccountParams:
     key: str
     temperature: float
     max_tokens: int
+    effort: Optional[str]
     fit: TimingFit
     persona: Persona
 
@@ -325,8 +326,11 @@ class AccountParams:
 def _account_params(key: str, p: Persona, fit: TimingFit, rng: random.Random) -> AccountParams:
     lo, hi = int(p.max_tokens[0]), int(p.max_tokens[1])
     max_tokens = lo if lo == hi else rng.randrange(lo, hi + 1, 1024)
+    if rng.random() < p.cap_rate:
+        max_tokens = int(CFG["sim"]["max_tokens_cap"])
+    effort = "high" if rng.random() < p.effort_rate else None
     return AccountParams(
-        key=key, temperature=round(rng.uniform(*p.temperature), 2), max_tokens=max_tokens,
+        key=key, temperature=round(rng.uniform(*p.temperature), 2), max_tokens=max_tokens, effort=effort,
         fit=fit.perturbed(rng, p.timing_jitter) if p.timing_jitter else fit, persona=p)
 
 
@@ -343,13 +347,13 @@ def session_requests(msgs: list[Message], times: list[float], a: AccountParams, 
     for idx, ((start, step), t) in enumerate(zip(steps, times)):
         body: dict[str, Any] = {"model": _MODEL, "messages": oa[:offsets[start]], "tools": tools,
                                 "temperature": a.temperature, "n": 1, "max_tokens": a.max_tokens}
-        if p.reasoning_effort:
-            body["reasoning_effort"] = p.reasoning_effort
+        if a.effort:
+            body["reasoning_effort"] = a.effort
         if user:
             body["user"] = user
         body["x_replay"] = {"step": [m.model_dump() for m in step]}
         final = idx == len(steps) - 1 and all(m.role != "tool_call" for m in step)
-        copies = _randint(rng, p.best_of_n)
+        copies = _randint(rng, p.best_of_n) + int(rng.random() < p.retry_rate)
         for c in range(copies):
             when = origin + t + (rng.uniform(0, spread) if c else 0.0)
             out.append(SimRequest(when, a.key, body, p.name, ref, final))

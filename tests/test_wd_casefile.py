@@ -5,7 +5,7 @@ import asyncio
 from typing import Any
 
 from dw.common.schema import Evidence
-from dw.watchdog.casefile import citations, paragraphs, validate, write_casefile
+from dw.watchdog.casefile import citations, paragraphs, safe_subject, validate, write_casefile
 
 KNOWN = {"ev-0000001", "ev-0000002", "fx-d1_dup_rate"}
 GOOD = ("## Findings\nThe account sent the same context 8 times [ev-0000001].\n\n"
@@ -57,12 +57,18 @@ class FakeClient:
         return {"choices": [{"message": {"content": self.texts.pop(0)}}]}
 
 
-EVIDENCE = [Evidence(id="ev-0000001", detector="d1", account_id="a", request_ids=["r1"], summary="dups", weight=1.0),
-            Evidence(id="ev-0000002", detector="d4", account_id="a", request_ids=["r2"], summary="elicit", weight=0.5)]
+SECRET = "SWECHAT-SECRET-7c1e /home/<user>/proj/parser.py def parse(): pass"
+EVIDENCE = [Evidence(id="ev-0000001", detector="d1", account_id="a", request_ids=["r1"],
+                     summary="dups " + SECRET, weight=1.0),
+            Evidence(id="ev-0000002", detector="d4", account_id="a", request_ids=["r2", "r3"],
+                     summary="elicit", weight=0.5)]
+SUBJECT = {"kind": "account", "pseudonym": "dev-3f2a", "score": 0.9, "state": "block", "requests": 12,
+           "campaign": None, "declared_use": SECRET, "top_edge_types": ["shared_task", SECRET],
+           "member_states": {"block": 3, SECRET: 1}}
 
 
 def _run(client: FakeClient) -> dict[str, Any]:
-    return asyncio.run(write_casefile("a", {"kind": "account"}, EVIDENCE, {"d1_dup_rate": 2.0}, None, client))
+    return asyncio.run(write_casefile("a", SUBJECT, EVIDENCE, {"d1_dup_rate": 2.0}, client))
 
 
 def test_retry_then_ok() -> None:
@@ -78,7 +84,26 @@ def test_fallback_after_two_rejections_and_no_raw_text() -> None:
     assert out["status"] == "fallback" and out["text"] == "" and out["cited"] == []
     assert {e["id"] for e in out["evidence"]} == KNOWN
     prompt = client.calls[0][1]["content"]
-    assert "dups" in prompt and "request_ids" not in prompt
+    assert "dups" not in prompt and "request_ids" not in prompt
+
+
+def test_llm_prompt_has_no_free_text() -> None:
+    client = FakeClient([GOOD])
+    out = _run(client)
+    prompt = "".join(m["content"] for m in client.calls[0])
+    assert "SWECHAT-SECRET" not in prompt and "parser.py" not in prompt and "dev-3f2a" not in prompt
+    for item_id in KNOWN:
+        assert item_id in prompt
+    assert '"d1"' in prompt and '"weight": 0.5' in prompt and '"requests": 2' in prompt
+    assert "shared_task" in prompt and '"log_odds": 2.0' in prompt
+    shown = {e["id"]: e["summary"] for e in out["evidence"]}
+    assert SECRET in shown["ev-0000001"] and "+2.00" in shown["fx-d1_dup_rate"]
+    assert out["status"] == "ok"
+
+
+def test_safe_subject_keeps_numbers_and_labels() -> None:
+    assert safe_subject(SUBJECT) == {"kind": "account", "score": 0.9, "state": "block", "requests": 12,
+                                     "top_edge_types": ["shared_task"], "member_states": {"block": 3}}
 
 
 def test_llm_error_gives_fallback() -> None:

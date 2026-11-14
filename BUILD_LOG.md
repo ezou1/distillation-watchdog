@@ -50,3 +50,24 @@ Start time (UTC): 2026-11-14T08:02:05Z (see `.build_clock`).
 ## Problems
 
 ## Reviewer findings
+
+Reviewer 1: ML audit (adversarial). Reviewer 2: code review. Reviewer 3: demo walkthrough.
+
+| ID | Reviewer | Severity | Finding | Status |
+|---|---|---|---|---|
+| R1-H1 | ML | High | `d1_dup_rate` alone separated the classes (AUC 1.0). No normal persona sent a duplicate. Stealth always sent 2 copies. | Fixed. All personas have a retry rate. Stealth sends a second copy for 35% of requests only. |
+| R1-H2 | ML | High | `max_tokens`, `reasoning_effort`, and temperature were constants for hydra and fake-env. | Fixed. Each account draws these values. The distributions overlap between normal and attack personas. |
+| R1-M1 | ML | Medium | The per-request threshold was selected on the holdout. | Fixed. `train_all.py` selects it on the validation request rows. The holdout only measures it. |
+| R1-M2 | ML | Medium | Attack accounts have exactly 1 user turn per session (Open-SWE data has one prompt). | Recorded. This is the source-label link (D-18). The full stealth persona (holdout) adds follow-ups. The ablation shows the effect. |
+| R1-M3 | ML | Medium | Path strings (`/home/`, `/workspace`) and `Claude Code` still show the source. | Recorded. A data rebuild was not possible in the time box. The format probe measures this (control 2 fails). |
+| R1-M4 | ML | Medium | Few normal accounts in validation (39) and holdout (57). The false positive rate has steps of about 2%. | Recorded as a limit. |
+| R1-L1 | ML | Low | Validation uses the train templates. | Recorded. Validation thresholds are optimistic. |
+| R1-L2 | ML | Low | D7 timing features are fully simulated. | Recorded. The README table shows the origin of each signal. |
+| R2-1 | Code | High | `.gitignore` pattern `data/` also ignored `dw/data/`. The data pipeline was not committed. | Fixed. The patterns are anchored (`/data/`). `dw/data/` is committed. |
+| R2-2 | Code | High | Cross-site request forgery on the agent chat: a foreign page could approve a shell command. Approval IDs were sequential. | Fixed (see below). |
+| R2-3 | Code | Medium | A path with a NUL byte broke the agent session. | Fixed (see below). |
+| R2-4 | Code | Medium | Case files sent evidence summaries (they can contain SWE-chat text) to the helper model. | Fixed (see below). |
+| R2-5 | Code | Medium | The lab sent any request without `x_replay` to the live backend, for any account. | Fixed (see below). |
+| R2-6 | Code | Medium | The agent shell can read `../.env`. | Recorded as a limit (D-24, README Limits). |
+| R2-7 | Code | Low | `bool("false")` is true in the approval handler. | Fixed (see below). |
+| R2-8..13 | Code | Low | DRY (two `ChatClient` protocols), the dashboard mock server, an unused config key, a long `create_app`, gzip size limit, ASD-STE100 passive voice. | Recorded. Not fixed in the time box, except the documentation sentences. |

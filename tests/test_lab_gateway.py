@@ -96,6 +96,27 @@ async def test_blocklist_returns_403_and_still_emits_event() -> None:
     assert lab.stats.blocked == 1 and lab.stats.served == 1
 
 
+async def test_live_backend_only_for_agent_account() -> None:
+    lab, worker, client = make_lab()
+    body = replay_body()
+    body.pop("x_replay")
+    status, resp = await lab.handle("acct-other", body, 5.0)
+    assert status == 400 and resp["error"] == "live backend not allowed" and "x_replay" in resp["detail"]
+    assert client.calls == [] and lab.stats.live == 0 and lab.stats.errors == 1
+    ev = worker.events[-1]
+    assert ev.status == 400 and ev.backend == "none" and ev.account_id == "acct-other"
+    assert (await lab.handle(CFG["agent"]["account_key"], body, 5.0))[0] == 200
+    assert len(client.calls) == 1 and lab.stats.live == 1
+
+
+async def test_block_check_comes_before_live_check() -> None:
+    lab, worker, client = make_lab({"acct-hydra": {"reason": "r", "case_id": "c"}})
+    body = {"model": "x", "messages": [{"role": "user", "content": "hi"}]}
+    status, resp = await lab.handle("acct-hydra", body, 5.0)
+    assert status == 403 and resp["error"] == "blocked" and client.calls == []
+    assert worker.events[-1].status == 403
+
+
 async def test_dup_counters_and_inline_flags() -> None:
     lab, worker, _ = make_lab()
     for _ in range(2):
@@ -140,7 +161,7 @@ async def test_live_backend_passes_parameters_without_cache() -> None:
     lab, worker, client = make_lab()
     body = replay_body()
     body.pop("x_replay")
-    status, resp = await lab.handle("acct-human", body, None)
+    status, resp = await lab.handle(CFG["agent"]["account_key"], body, None)
     assert status == 200 and resp["choices"][0]["finish_reason"] == "tool_calls"
     call = client.calls[0]
     assert call["cache"] is False and call["model"] == CFG["models"]["lab_model"]
@@ -162,7 +183,7 @@ async def test_live_backend_failure_gives_502() -> None:
 
     worker = StubWorker()
     lab = Lab(DirectSink(worker), DirectBlocklist(worker), LiveBackend(Broken()))
-    status, _ = await lab.handle("acct-a", {"messages": [{"role": "user", "content": "x"}]}, 1.0)
+    status, _ = await lab.handle(CFG["agent"]["account_key"], {"messages": [{"role": "user", "content": "x"}]}, 1.0)
     assert status == 502 and worker.events[0].status == 502
 
 

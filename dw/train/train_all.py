@@ -152,8 +152,8 @@ def train_account_models() -> dict[str, Any]:
     labels: list[int] = []
     req_rows: list[tuple[dict[str, float], int]] = []
     jobs = [("train", seed, True, True) for seed in CFG["account"]["train_seeds"]]
-    jobs.append(("val", CFG["account"]["val_seed"], False, False))
-    *train_results, (va_table, va_lab, _) = run_scenarios(jobs)
+    jobs.append(("val", CFG["account"]["val_seed"], False, True))
+    *train_results, (va_table, va_lab, va_req) = run_scenarios(jobs)
     for table, lab, rr in train_results:
         rows += list(table.values())
         labels += [lab[a] for a in table]
@@ -166,12 +166,20 @@ def train_account_models() -> dict[str, Any]:
     rng.shuffle(req_rows)
     req_rows = req_rows[: TCFG["request_rows_max"]]
     req_model = am.fit([r for r, _ in req_rows], [y for _, y in req_rows])
+    req_model.thresholds = {"request": request_threshold(req_model, va_req)}
     am.save(req_model, MODELS / am.REQUEST_MODEL_FILE)
     val_scores = model.predict_many(list(va_table.values()))
     return {"train_accounts": len(rows), "train_attack": sum(labels), "val_accounts": len(va_table),
             "thresholds": thresholds, "coefficients": am.coefficients(model),
             "val_auc": _auc([va_lab[a] for a in va_table], val_scores),
             "request_rows": len(req_rows), "request_coefficients": am.coefficients(req_model)}
+
+
+def request_threshold(model: am.LogitModel, rows: list[tuple[dict[str, float], int]]) -> float:
+    """The per-request threshold with the best recall minus false positive rate on validation rows (Youden)."""
+    from sklearn.metrics import roc_curve
+    fpr, tpr, thr = roc_curve([y for _, y in rows], model.predict_many([r for r, _ in rows]))
+    return float(min(thr[int((tpr - fpr).argmax())], 1.0))
 
 
 def _auc(labels: list[int], scores: list[float]) -> float | None:

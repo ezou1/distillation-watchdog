@@ -120,6 +120,66 @@ async def test_agent_through_lab_with_live_fixture(box: Sandbox, monkeypatch: py
     assert ev.account_id == "acct-human-demo" and ev.backend == "live" and ev.tools_schema_id == "standard_agent"
 
 
+def file_call(name: str, args: dict[str, Any]) -> dict[str, Any]:
+    return {"choices": [{"index": 0, "finish_reason": "tool_calls", "message": {
+        "role": "assistant", "content": None, "tool_calls": [{"id": "call_f", "type": "function", "function": {
+            "name": name, "arguments": json.dumps(args)}}]}}]}
+
+
+async def test_nul_path_still_gives_tool_result(box: Sandbox) -> None:
+    lab = ScriptedLab(file_call("read_file", {"path": "a\x00b"}), FINAL, FINAL)
+    agent = Agent(box, lab)
+    out = await agent.chat("Read it.", True)
+    assert out["status"] == "done" and out["messages"][2]["role"] == "tool"
+    assert out["messages"][2]["content"].startswith("Error:") and "NUL" in out["messages"][2]["content"]
+    assert (await agent.chat("Again.", True))["status"] == "done"
+
+
+async def test_tool_exception_still_gives_tool_result(box: Sandbox, monkeypatch: pytest.MonkeyPatch) -> None:
+    def boom(*args: Any) -> str:
+        raise RuntimeError("tool crashed")
+
+    monkeypatch.setattr(box, "run_file_tool", boom)
+    monkeypatch.setattr(box, "run_shell", boom)
+    agent = Agent(box, ScriptedLab(TOOLCALL, shell_call("ls"), FINAL))
+    pending = (await agent.chat("Go.", True))["pending"]
+    assert agent.messages[2]["role"] == "tool" and "tool crashed" in agent.messages[2]["content"]
+    out = await agent.approve(pending["approval_id"], True)
+    assert out["status"] == "done" and "tool crashed" in out["messages"][4]["content"]
+
+
+async def test_approval_ids_are_not_guessable(box: Sandbox) -> None:
+    agent = Agent(box, ScriptedLab(shell_call("ls"), FINAL))
+    approval_id = (await agent.chat("ls", True))["pending"]["approval_id"]
+    assert approval_id.startswith("ap-") and len(approval_id) >= 20 and approval_id != "ap-0001"
+
+
+async def test_csrf_and_content_type_checks(box: Sandbox) -> None:
+    agent = Agent(box, ScriptedLab(shell_call("touch made.txt"), FINAL))
+    port = CFG["ports"]["agent"]
+    transport = httpx.ASGITransport(app=build_app(agent))
+    async with httpx.AsyncClient(transport=transport, base_url="http://agent") as client:
+        body = json.dumps({"message": "hi", "tools": True})
+        evil = {"Origin": "http://evil.example", "Content-Type": "application/json"}
+        for url in ("/api/chat", "/api/approve", "/api/session/new"):
+            assert (await client.post(url, content=body, headers=evil)).status_code == 403
+            text = {"Content-Type": "text/plain"}
+            assert (await client.post(url, content=body, headers=text)).status_code == 415
+        assert agent.messages == []
+        same = {"Origin": f"http://127.0.0.1:{port}"}
+        out = await client.post("/api/chat", json={"message": "hi", "tools": True}, headers=same)
+        assert out.status_code == 200 and out.json()["status"] == "awaiting_approval"
+        approval_id = out.json()["pending"]["approval_id"]
+        ok = {"Origin": f"http://localhost:{port}", "Content-Type": "text/plain"}
+        assert (await client.post("/api/approve", content=json.dumps({"approval_id": approval_id, "approve": True}),
+                                  headers=ok)).status_code == 415
+        out = await client.post("/api/approve", json={"approval_id": approval_id, "approve": "false"},
+                                headers={"Origin": f"http://localhost:{port}"})
+        assert out.status_code == 200 and out.json()["messages"][2]["content"] == REJECTED
+        assert not (box.root / "made.txt").exists()
+        assert (await client.post("/api/chat", json=["not", "an", "object"])).status_code == 400
+
+
 async def test_http_api(box: Sandbox) -> None:
     agent = Agent(box, ScriptedLab(shell_call("echo hi > hi.txt"), FINAL))
     transport = httpx.ASGITransport(app=build_app(agent))
@@ -132,6 +192,6 @@ async def test_http_api(box: Sandbox) -> None:
         assert out["status"] == "done"
         files = (await client.get("/api/files")).json()["files"]
         assert {"path": "hi.txt", "size": 3} in files
-        assert (await client.post("/api/session/new")).json() == {"ok": True}
+        assert (await client.post("/api/session/new", json={})).json() == {"ok": True}
         assert (await client.get("/api/session")).json()["messages"] == []
         assert (await client.get("/")).status_code == 200

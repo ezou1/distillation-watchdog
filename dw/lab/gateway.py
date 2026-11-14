@@ -104,7 +104,11 @@ class Lab:
         self.accounts[account_id] = Account(declared_use, quota)
 
     async def handle(self, key: str | None, body: dict[str, Any], sim_time: float | None) -> tuple[int, dict]:
-        """Serve one chat completion request. Return (HTTP status, JSON body)."""
+        """Serve one chat completion request. Return (HTTP status, JSON body).
+
+        The block check comes first and gives 403. A request without `x_replay` goes to the live model
+        only for the agent-chat account (`agent.account_key`). Other accounts get 400.
+        """
         t0 = time.perf_counter()
         if not key:
             return 401, {"error": "missing bearer key"}
@@ -118,6 +122,10 @@ class Lab:
         if block is not None:
             status, resp = 403, {"error": "blocked", "reason": block.get("reason", ""),
                                  "case_id": block.get("case_id", "")}
+        elif x_replay is None and key != CFG["agent"]["account_key"]:
+            status, resp = 400, {"error": "live backend not allowed",
+                                 "detail": "Only the agent-chat account can use the live model. "
+                                           "Other accounts must send x_replay."}
         else:
             status, resp = await self._respond(ev, body, x_replay)
         ev.status = status

@@ -5,3 +5,4 @@ export OMP_NUM_THREADS=1 OPENBLAS_NUM_THREADS=1 MKL_NUM_THREADS=1  # small per-r
 cd "$(dirname "$0")/.."
 DW_LLM_OFFLINE=1 .venv/bin/python -m dw.eval.run_eval
 DW_LLM_OFFLINE=1 .venv/bin/python -m dw.eval.controls
+.venv/bin/python -m dw.eval.readme

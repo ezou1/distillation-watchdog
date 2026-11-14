@@ -266,14 +266,14 @@ def _mean_contributions(accts: list[AccountState]) -> dict[str, float]:
 
 
 async def _casefile(hub: Hub, key: str, case_id: str, subject: dict, evidence: list[Evidence],
-                    contributions: dict[str, float], template: Optional[str]) -> dict[str, Any]:
+                    contributions: dict[str, float]) -> dict[str, Any]:
     cache_key = key + ":" + ",".join(e.id for e in casefile.top_evidence(evidence))
     if cache_key in hub.casefiles:
         return {**hub.casefiles[cache_key], "cached": True}
     if hub.llm is None:
         from dw.common.llm import LLMClient
         hub.llm = LLMClient()
-    result = await casefile.write_casefile(case_id, subject, evidence, contributions, template, hub.llm)
+    result = await casefile.write_casefile(case_id, subject, evidence, contributions, hub.llm)
     if result["status"] == "ok":
         hub.casefiles[cache_key] = result
     return result
@@ -284,7 +284,7 @@ async def account_casefile(hub: Hub, acct: AccountState) -> dict[str, Any]:
                "state": acct.state, "requests": acct.n_requests, "sessions": len(acct.sessions),
                "campaign": acct.campaign_id, "declared_use": acct.declared_use}
     return await _casefile(hub, "acct:" + acct.account_id, acct.account_id, subject, acct.evidence,
-                           acct.contributions, None)
+                           acct.contributions)
 
 
 async def campaign_casefile(hub: Hub, c: Campaign) -> dict[str, Any]:
@@ -292,7 +292,7 @@ async def campaign_casefile(hub: Hub, c: Campaign) -> dict[str, Any]:
     subject = {"kind": "campaign", **campaign_row(c),
                "member_states": {s: sum(1 for a in accts if a.state == s) for s in {a.state for a in accts}}}
     evidence = c.evidence + [e for a in accts for e in a.evidence]
-    return await _casefile(hub, "cmp:" + c.id, c.id, subject, evidence, _mean_contributions(accts), c.template)
+    return await _casefile(hub, "cmp:" + c.id, c.id, subject, evidence, _mean_contributions(accts))
 
 
 # ---- app -----------------------------------------------------------------------------------------

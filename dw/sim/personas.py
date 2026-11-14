@@ -1,4 +1,4 @@
-"""Persona parameters for the six simulated customer types.
+"""Persona parameters for the six simulated account types.
 
 One Persona class holds the parameters. The values come from the `sim.personas` section of config.yaml.
 Training scenarios widen the numeric ranges (domain randomization) and use a light stealth persona.
@@ -37,7 +37,9 @@ class Persona:
     temperature: Range
     max_tokens: Range
     best_of_n: Range = (1, 1)
-    reasoning_effort: Optional[str] = None
+    retry_rate: float = 0.0         # chance that one request is sent one more time (retry, regenerate)
+    effort_rate: float = 0.0        # chance that an account sends reasoning_effort = "high"
+    cap_rate: float = 0.0           # chance that an account sets max_tokens to the cap
     elicit_rate: float = 0.0
     benign_rate: float = 0.0
     attacker_template: bool = False
@@ -66,9 +68,15 @@ def _attack(name: str, data: str, c: dict[str, Any]) -> Persona:
     return Persona(
         name=name, role="attack", data=data, schema_id="standard_agent", timing="cron",
         sessions_per_account=_rng(c["sessions_per_account"]), temperature=_rng(c["temperature"]),
-        max_tokens=_rng(c["max_tokens"]), best_of_n=_rng(c["best_of_n"]),
-        reasoning_effort=c["reasoning_effort"], elicit_rate=c["elicit_rate"], attacker_template=True,
+        max_tokens=_rng(CFG["sim"]["normal_max_tokens"]), best_of_n=_rng(c["best_of_n"]),
+        **_params(c), elicit_rate=c["elicit_rate"], attacker_template=True,
         cron_interval_s=float(c["cron_interval_s"]), start_jitter_s=float(c["start_jitter_s"]))
+
+
+def _params(c: dict[str, Any]) -> dict[str, float]:
+    """Request-parameter rates of one persona. Every persona has the same three rates (overlapping values)."""
+    return {"retry_rate": float(c.get("retry_rate", 0.0)), "effort_rate": float(c.get("effort_rate", 0.0)),
+            "cap_rate": float(c.get("cap_rate", 0.0))}
 
 
 def base_personas(full_stealth: bool) -> dict[str, Persona]:
@@ -82,17 +90,19 @@ def base_personas(full_stealth: bool) -> dict[str, Persona]:
         "solo_dev": Persona(
             name="solo_dev", role="normal", data="swechat", schema_id="standard_agent", timing="human",
             sessions_per_account=_rng(p["solo_dev"]["sessions_per_account"]),
-            temperature=_rng(p["solo_dev"]["temperature"]), max_tokens=normal_tokens, benign_rate=benign),
+            temperature=_rng(p["solo_dev"]["temperature"]), max_tokens=normal_tokens, benign_rate=benign,
+            **_params(p["solo_dev"])),
         "saas_app": Persona(
             name="saas_app", role="normal", data="saas", schema_id="saas_custom", timing="spread",
             sessions_per_account=_rng(p["saas_app"]["sessions_per_account"]),
             temperature=_rng(p["saas_app"]["temperature"]), max_tokens=normal_tokens, benign_rate=benign,
+            **_params(p["saas_app"]),
             product_template=p["saas_app"]["product_template"], end_users=_rng(p["saas_app"]["end_users_per_account"])),
         "benchmark_runner": Persona(
             name="benchmark_runner", role="normal", data="bench", schema_id="bench_harness", timing="sequential",
             sessions_per_account=_rng(p["benchmark_runner"]["tasks_per_account"]),
             temperature=_rng(p["benchmark_runner"]["temperature"]), max_tokens=normal_tokens,
-            benign_rate=benign, declared_use="benchmark", quota=int(p["benchmark_runner"]["quota"]),
+            benign_rate=benign, declared_use="benchmark", **_params(p["benchmark_runner"]), quota=int(p["benchmark_runner"]["quota"]),
             attempts=_rng(p["benchmark_runner"]["attempts"])),
         "hydra": _attack("hydra", "hydra", p["hydra"]),
         "fake_env": _attack("fake_env", "fake", p["fake_env"]),
@@ -100,7 +110,7 @@ def base_personas(full_stealth: bool) -> dict[str, Persona]:
             name="stealth", role="attack", data="stealth" if full_stealth else "hydra",
             schema_id="standard_agent", timing="human",
             sessions_per_account=_rng(st["sessions_per_account"]), temperature=_rng(st["temperature"]),
-            max_tokens=normal_tokens, best_of_n=_rng(st["best_of_n"]), elicit_rate=st["elicit_rate"],
+            max_tokens=normal_tokens, best_of_n=_rng(st["best_of_n"]), **_params(st), elicit_rate=st["elicit_rate"],
             swechat_mix=st["swechat_mix"] if full_stealth else 0.0, paraphrase=full_stealth,
             followups=_rng(st["followups"]) if full_stealth else (0, 0), timing_jitter=float(st["timing_jitter"])),
     }
@@ -117,6 +127,7 @@ def _widen(value: Any, rng: random.Random, frac: float) -> Any:
 
 
 _RANDOMIZED = ("sessions_per_account", "temperature", "best_of_n", "elicit_rate", "benign_rate",
+               "retry_rate", "effort_rate", "cap_rate",
                "start_jitter_s", "cron_interval_s", "timing_jitter", "end_users", "attempts")
 
 
@@ -126,7 +137,7 @@ def randomize(persona: Persona, rng: random.Random, frac: float) -> Persona:
                for f in fields(persona) if f.name in _RANDOMIZED and getattr(persona, f.name) is not None}
     lo, hi = changes["temperature"]
     changes["temperature"] = (max(0.0, lo), min(2.0, hi))
-    for key in ("elicit_rate", "benign_rate"):
+    for key in ("elicit_rate", "benign_rate", "retry_rate", "effort_rate", "cap_rate"):
         changes[key] = min(1.0, changes[key])
     return replace(persona, **changes)
 

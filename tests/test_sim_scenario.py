@@ -126,21 +126,30 @@ def _copies(sc: Scenario, persona: str) -> list[int]:
 
 
 def test_best_of_n(holdout: Scenario) -> None:
+    """Hydra sends best-of-n copies (+1 retry at most). Other personas send 1 copy, or 2 when they retry."""
     lo, hi = CFG["sim"]["personas"]["hydra"]["best_of_n"]
-    assert all(lo <= c <= hi for c in _copies(holdout, "hydra"))
-    assert set(_copies(holdout, "stealth")) == {CFG["sim"]["personas"]["stealth"]["best_of_n"]}
+    assert all(lo <= c <= hi + 1 for c in _copies(holdout, "hydra"))
+    stealth = _copies(holdout, "stealth")
+    assert set(stealth) <= {1, 2} and 0 < stealth.count(2) < len(stealth)
     for persona in ("solo_dev", "saas_app", "benchmark_runner"):
-        assert set(_copies(holdout, persona)) == {1}
+        copies = _copies(holdout, persona)
+        assert set(copies) <= {1, 2} and copies.count(1) > 0.8 * len(copies)
 
 
 def test_attack_request_parameters(holdout: Scenario) -> None:
-    for r in _of(holdout, "hydra"):
-        assert r.body["temperature"] == 1.0 and r.body["reasoning_effort"] == "high"
-        assert r.body["max_tokens"] == CFG["sim"]["personas"]["hydra"]["max_tokens"]
-        assert schema_id_of(r.body["tools"]) == "standard_agent"
+    """Request parameters overlap between personas: no single value identifies a persona."""
+    cap = CFG["sim"]["max_tokens_cap"]
+    hydra = _of(holdout, "hydra")
+    lo, hi = CFG["sim"]["personas"]["hydra"]["temperature"]
+    assert all(lo <= r.body["temperature"] <= hi for r in hydra)
+    assert all(schema_id_of(r.body["tools"]) == "standard_agent" for r in hydra)
+    for persona in ("hydra", "solo_dev"):
+        rows = _of(holdout, persona)
+        efforts = {r.body.get("reasoning_effort") for r in rows}
+        tokens = {r.body["max_tokens"] == cap for r in rows}
+        assert efforts == {"high", None} and tokens == {True, False}, persona
     for r in _of(holdout, "solo_dev"):
-        assert "reasoning_effort" not in r.body and "user" not in r.body
-        assert 0.0 <= r.body["temperature"] <= 0.7
+        assert "user" not in r.body and 0.0 <= r.body["temperature"] <= 1.0
 
 
 def test_schema_ids(holdout: Scenario) -> None:

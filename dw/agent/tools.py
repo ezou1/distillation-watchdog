@@ -41,7 +41,9 @@ class Sandbox:
         self.root = root.resolve()
 
     def resolve(self, rel: str) -> Path:
-        """Return the real path for `rel`. Raise SandboxError if it is outside the sandbox."""
+        """Return the real path for `rel`. Raise SandboxError if it is outside the sandbox or has a NUL byte."""
+        if "\x00" in (rel or ""):
+            raise SandboxError("path contains a NUL byte")
         full = (self.root / (rel or ".")).resolve()
         if full != self.root and self.root not in full.parents:
             raise SandboxError(f"path is outside the sandbox: {rel}")
@@ -109,7 +111,7 @@ class Sandbox:
         try:
             args = parse_args(raw_args)
             return tools[name](**args)
-        except (SandboxError, TypeError, OSError, UnicodeDecodeError) as exc:
+        except (ValueError, TypeError, OSError) as exc:  # ValueError includes SandboxError and UnicodeDecodeError
             return f"Error: {exc}"
 
 

@@ -138,19 +138,24 @@ def leakage_by_campaign(result: OfflineResult, worker: Worker) -> dict[str, Any]
 
 
 def per_request_vs_account(scen: Scenario, worker: Worker, rows: list[dict[str, Any]]) -> dict[str, Any]:
-    """The key result: per-request false flags at scale versus falsely blocked normal accounts."""
+    """The key result: per-request false flags at scale versus falsely blocked normal accounts.
+
+    The per-request threshold comes from validation. The holdout only measures it.
+    """
     model = am.load(MODELS / am.REQUEST_MODEL_FILE)
     reqs = [(aid, f) for _, aid, f in worker.request_rows if aid in scen.labels]
     y = np.array([int(scen.labels[a]["role"] == "attack") for a, _ in reqs])
     s = np.array(model.predict_many([f for _, f in reqs]))
-    fpr, tpr, thr = roc_curve(y, s)
-    best = int(np.argmax(tpr - fpr))
+    thr = model.thresholds["request"]                 # chosen on validation request rows (train_all.py)
+    flag = s >= thr
+    fpr_at = float(flag[y == 0].mean())
+    tpr_at = float(flag[y == 1].mean())
     per_day = CFG["eval"]["requests_per_day"]
     normal_rows = [r for r in rows if r["y"] == 0]
     false_blocks = sum(r["state"] == "block" for r in normal_rows)
-    out = {"request_auc": round(float(roc_auc_score(y, s)), 4), "request_best_threshold": float(thr[best]),
-           "request_fpr_at_best": round(float(fpr[best]), 4), "request_recall_at_best": round(float(tpr[best]), 4),
-           "requests_per_day": per_day, "false_request_flags_per_day": int(round(fpr[best] * per_day)),
+    out = {"request_auc": round(float(roc_auc_score(y, s)), 4), "request_threshold_from_val": float(thr),
+           "request_fpr": round(fpr_at, 4), "request_recall": round(tpr_at, 4),
+           "requests_per_day": per_day, "false_request_flags_per_day": int(round(fpr_at * per_day)),
            "normal_accounts": len(normal_rows), "falsely_blocked_normal_accounts": false_blocks,
            "account_fpr": round(false_blocks / max(1, len(normal_rows)), 4),
            "attack_account_recall": round(sum(r["state"] == "block" for r in rows if r["y"]) / max(1, sum(r["y"] for r in rows)), 4)}

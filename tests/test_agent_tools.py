@@ -39,6 +39,15 @@ def test_symlink_escape_is_rejected(box: Sandbox) -> None:
     assert all("secret" not in f["path"] for f in box.files())
 
 
+def test_nul_byte_path_is_rejected(box: Sandbox) -> None:
+    with pytest.raises(SandboxError, match="NUL"):
+        box.resolve("a\x00b.txt")
+    calls = {"read_file": {}, "list_dir": {}, "write_file": {"content": "x"}, "edit_file": {"old": "x", "new": "y"}}
+    for name, extra in calls.items():
+        out = box.run_file_tool(name, {"path": "a\x00b.txt", **extra})
+        assert out.startswith("Error:") and "NUL" in out
+
+
 def test_absolute_path_inside_is_allowed(box: Sandbox) -> None:
     assert box.resolve(str(box.root / "a.txt")) == box.root / "a.txt"
 

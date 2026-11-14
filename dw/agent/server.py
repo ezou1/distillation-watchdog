@@ -9,12 +9,13 @@ from __future__ import annotations
 import asyncio
 import json
 import os
+import secrets
 import time
 from typing import Any, Awaitable, Callable
 
 import httpx
 from fastapi import FastAPI, Request
-from fastapi.responses import FileResponse
+from fastapi.responses import FileResponse, JSONResponse, Response
 
 from dw.agent.tools import Sandbox, SandboxError, parse_args
 from dw.common.chat import tool_defs
@@ -47,7 +48,6 @@ class Agent:
         self.error: str | None = None
         self.steps = 0
         self.tools_on = True
-        self._approvals = 0
 
     async def chat(self, text: str, tools_on: bool) -> dict[str, Any]:
         """Add a user message and run the agent loop."""
@@ -64,7 +64,10 @@ class Agent:
             return self.view(error="No pending command has this approval ID.")
         call = self.queue.pop(0)
         if approve:
-            output = await asyncio.to_thread(self.sandbox.run_shell, self.pending["command"])
+            try:
+                output = await asyncio.to_thread(self.sandbox.run_shell, self.pending["command"])
+            except Exception as exc:  # every tool call must get a tool result in the history
+                output = f"Error: the command did not run: {exc}"
         else:
             output = REJECTED
         self.pending = None
@@ -92,7 +95,11 @@ class Agent:
             name = call["function"]["name"]
             if name != "run_shell":
                 self.queue.pop(0)
-                self._add_result(call, self.sandbox.run_file_tool(name, call["function"].get("arguments")))
+                try:
+                    output = self.sandbox.run_file_tool(name, call["function"].get("arguments"))
+                except Exception as exc:  # every tool call must get a tool result in the history
+                    output = f"Error: {exc}"
+                self._add_result(call, output)
                 continue
             try:
                 command = str(parse_args(call["function"].get("arguments"))["command"])
@@ -100,8 +107,7 @@ class Agent:
                 self.queue.pop(0)
                 self._add_result(call, f"Error: bad arguments for run_shell: {exc}")
                 continue
-            self._approvals += 1
-            self.pending = {"approval_id": f"ap-{self._approvals:04d}", "command": command}
+            self.pending = {"approval_id": "ap-" + secrets.token_urlsafe(16), "command": command}
             return True
         return False
 
@@ -191,24 +197,64 @@ def http_lab_call(client: httpx.AsyncClient, lab_url: str) -> LabCall:
     return call
 
 
+def allowed_origins() -> set[str]:
+    """The origins of the agent page itself. A POST from another origin is a cross-site request."""
+    port = CFG["ports"]["agent"]
+    return {f"http://127.0.0.1:{port}", f"http://localhost:{port}"}
+
+
+def post_guard(request: Request) -> JSONResponse | None:
+    """Return an error response for a cross-site or non-JSON POST. Return None if the POST is good.
+
+    A foreign Origin header gives 403. A Content-Type that is not application/json gives 415.
+    A browser cannot send a cross-site application/json POST without a CORS preflight, and this app allows none.
+    """
+    origin = request.headers.get("origin")
+    if origin is not None and origin not in allowed_origins():
+        return JSONResponse({"error": "cross-origin request is not allowed"}, status_code=403)
+    ctype = request.headers.get("content-type", "").split(";")[0].strip().lower()
+    if ctype != "application/json":
+        return JSONResponse({"error": "Content-Type must be application/json"}, status_code=415)
+    return None
+
+
+async def json_object(request: Request) -> dict[str, Any] | None:
+    """The JSON object of the request body, or None if the body is not a JSON object."""
+    try:
+        data = await request.json()
+    except ValueError:
+        return None
+    return data if isinstance(data, dict) else None
+
+
 def build_app(agent: Agent) -> FastAPI:
     app = FastAPI(title="agent chat")
+
+    @app.middleware("http")
+    async def guard(request: Request, call_next: Callable[[Request], Awaitable[Response]]) -> Response:
+        if request.method == "POST" and (error := post_guard(request)) is not None:
+            return error
+        return await call_next(request)
 
     @app.get("/")
     async def index() -> FileResponse:
         return FileResponse(ROOT / "static" / "agent.html")
 
-    @app.post("/api/chat")
-    async def chat(request: Request) -> dict:
-        data = await request.json()
+    @app.post("/api/chat", response_model=None)
+    async def chat(request: Request) -> dict | JSONResponse:
+        data = await json_object(request)
+        if data is None:
+            return JSONResponse({"error": "the body must be a JSON object"}, status_code=400)
         async with agent.lock:
-            return await agent.chat(str(data.get("message", "")), bool(data.get("tools", True)))
+            return await agent.chat(str(data.get("message", "")), data.get("tools", True) is not False)
 
-    @app.post("/api/approve")
-    async def approve(request: Request) -> dict:
-        data = await request.json()
+    @app.post("/api/approve", response_model=None)
+    async def approve(request: Request) -> dict | JSONResponse:
+        data = await json_object(request)
+        if data is None:
+            return JSONResponse({"error": "the body must be a JSON object"}, status_code=400)
         async with agent.lock:
-            return await agent.approve(str(data.get("approval_id", "")), bool(data.get("approve")))
+            return await agent.approve(str(data.get("approval_id", "")), data.get("approve") is True)
 
     @app.get("/api/session")
     async def session() -> dict:
