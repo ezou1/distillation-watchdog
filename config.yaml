@@ -168,6 +168,9 @@ watchdog:
   term_interval_s: 1.0
 
 detectors:
+  embed_max_chars: 200          # bge-small on this CPU: about 40 texts/s at 200 chars, 3 texts/s at 2000
+  embed_batch: 64
+  embed_threads: 2              # ONNX threads; more threads spin on small per-request batches
   evidence_first: 3             # evidence items per account and kind: the first N ...
   evidence_every: 25            # ... and then every Mth item
   d1:
@@ -189,6 +192,7 @@ detectors:
       - "undo your last edit"
   d3:
     kmeans_k: 50
+    kmeans_fit_n: 5000          # train first prompts sampled for the k-means fit (time limit)
     repo_jaccard: 0.2           # path-set similarity to join a session to a repository
     seed: 0
   d4:
@@ -208,6 +212,7 @@ detectors:
     ws_normalize: true
     snippet_chars: 60
     lr_C: 4.0
+    realism_chars: 1000         # the realism classifier reads the first N chars of a tool output (speed)
   d7:
     active_hour_min_requests: 1
     concurrency_window_s: 300
@@ -267,6 +272,7 @@ train:
   elicit_prompts: 3000
   realism_neg_ratio: 2
   request_rows_max: 200000
+  processes: 4                  # scenarios run in parallel processes
 
 controls:
   seed: 17

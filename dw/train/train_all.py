@@ -127,17 +127,38 @@ def save_features(name: str, table: dict[str, dict[str, float]], labels: dict[st
     (FEATURES / f"{name}.json").write_text(json.dumps({"features": table, "labels": labels}))
 
 
+def _scenario_job(args: tuple[str, int, bool, bool]) -> tuple[dict, dict, list]:
+    embed.load_cache(EMB_CACHE)
+    out = scenario_features(*args)
+    split, seed = args[0], args[1]
+    embed.save_cache(EMB_CACHE.with_name(f"emb_{split}_{seed}.npz"))
+    return out
+
+
+def run_scenarios(jobs: list[tuple[str, int, bool, bool]]) -> list[tuple[dict, dict, list]]:
+    """Run the scenarios in parallel processes (spawn: no forked ONNX threads). Merge their embedding caches."""
+    import multiprocessing as mp
+    with mp.get_context("spawn").Pool(min(len(jobs), TCFG.get("processes", 4))) as pool:
+        results = pool.map(_scenario_job, jobs)
+    for split, seed, _, _ in jobs:
+        part = EMB_CACHE.with_name(f"emb_{split}_{seed}.npz")
+        embed.load_cache(part)
+        part.unlink(missing_ok=True)
+    return results
+
+
 def train_account_models() -> dict[str, Any]:
     rows: list[dict[str, float]] = []
     labels: list[int] = []
     req_rows: list[tuple[dict[str, float], int]] = []
-    for seed in CFG["account"]["train_seeds"]:
-        table, lab, rr = scenario_features("train", seed, training=True, record=True)
+    jobs = [("train", seed, True, True) for seed in CFG["account"]["train_seeds"]]
+    jobs.append(("val", CFG["account"]["val_seed"], False, False))
+    *train_results, (va_table, va_lab, _) = run_scenarios(jobs)
+    for table, lab, rr in train_results:
         rows += list(table.values())
         labels += [lab[a] for a in table]
         req_rows += rr
     model = am.fit(rows, labels)
-    va_table, va_lab, _ = scenario_features("val", CFG["account"]["val_seed"], training=False, record=False)
     thresholds = am.set_thresholds(model, list(va_table.values()), [va_lab[a] for a in va_table])
     am.save(model, MODELS / am.ACCOUNT_MODEL_FILE)
 
@@ -159,13 +180,18 @@ def _auc(labels: list[int], scores: list[float]) -> float | None:
 
 
 def timed(name: str, fn: Callable[[], Any], compute: dict[str, Any]) -> Any:
-    """Run one step. Record wall time and peak memory (MB)."""
-    t0 = time.time()
+    """Run one step. Record wall time, CPU time (this process and its child processes), and peak memory (MB)."""
+    t0, c0 = time.time(), _cpu()
     out = fn()
-    compute[name] = {"wall_s": round(time.time() - t0, 2),
+    compute[name] = {"wall_s": round(time.time() - t0, 2), "cpu_s": round(_cpu() - c0, 1),
                      "peak_rss_mb": round(resource.getrusage(resource.RUSAGE_SELF).ru_maxrss / 1024, 1)}
     print(f"[train] {name}: {compute[name]}", flush=True)
     return out
+
+
+def _cpu() -> float:
+    own, kids = resource.getrusage(resource.RUSAGE_SELF), resource.getrusage(resource.RUSAGE_CHILDREN)
+    return own.ru_utime + own.ru_stime + kids.ru_utime + kids.ru_stime
 
 
 def main() -> None:
@@ -184,6 +210,7 @@ def main() -> None:
     metrics["account_model"] = timed("account_model", train_account_models, compute)
     embed.save_cache(EMB_CACHE)
     compute["train_total_s"] = round(time.time() - t0, 1)
+    compute["train_total_cpu_s"] = round(_cpu(), 1)
     (REPORTS / "train_metrics.json").write_text(json.dumps(metrics, indent=2))
     old = json.loads((REPORTS / "compute.json").read_text()) if (REPORTS / "compute.json").exists() else {}
     old["train"] = compute

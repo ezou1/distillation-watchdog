@@ -7,6 +7,7 @@ from __future__ import annotations
 
 import re
 import shlex
+from functools import lru_cache
 from dataclasses import dataclass, field
 from typing import Any
 
@@ -192,13 +193,18 @@ def _failed(text: str) -> bool:
 
 
 def _tokens(segment: str) -> list[str]:
+    return list(_tokens_cached(segment))
+
+
+@lru_cache(maxsize=100_000)
+def _tokens_cached(segment: str) -> tuple[str, ...]:
     try:
         tokens = shlex.split(segment)
     except ValueError:
         tokens = segment.split()
     while tokens and (tokens[0] in ("timeout", "sudo", "time") or tokens[0].replace(".", "").isdigit()):
         tokens = tokens[1:]
-    return tokens
+    return tuple(tokens)
 
 
 def _read_only(prog: str, rest: list[str]) -> bool:

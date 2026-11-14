@@ -19,22 +19,24 @@ _mem: dict[str, np.ndarray] = {}
 @lru_cache(maxsize=1)
 def _model():  # type: ignore[no-untyped-def]
     from fastembed import TextEmbedding
-    return TextEmbedding(MODEL_NAME, cache_dir=str(ROOT / CFG["paths"]["cache"] / "fastembed"))
+    return TextEmbedding(MODEL_NAME, cache_dir=str(ROOT / CFG["paths"]["cache"] / "fastembed"),
+                         threads=CFG["detectors"].get("embed_threads"))
 
 
 def _key(text: str) -> str:
     return hashlib.sha256(text.encode("utf-8")).hexdigest()[:24]
 
 
-def embed(texts: list[str], max_chars: int = 2000) -> np.ndarray:
+def embed(texts: list[str], max_chars: int | None = None) -> np.ndarray:
     """Return L2-normalized embeddings, shape (len(texts), 384). Repeated texts use the cache."""
+    max_chars = max_chars or CFG["detectors"]["embed_max_chars"]
     texts = [t[:max_chars] for t in texts]
     keys = [_key(t) for t in texts]
     with _lock:
         missing = [(k, t) for k, t in zip(keys, texts) if k not in _mem]
         if missing:
             uniq = dict(missing)
-            vecs = np.array(list(_model().embed(list(uniq.values()))), dtype=np.float32)
+            vecs = np.array(list(_model().embed(list(uniq.values()), batch_size=CFG["detectors"]["embed_batch"])), dtype=np.float32)
             vecs /= np.linalg.norm(vecs, axis=1, keepdims=True) + 1e-9
             for k, v in zip(uniq.keys(), vecs):
                 _mem[k] = v

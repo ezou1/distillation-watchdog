@@ -25,12 +25,12 @@
     "train_pos": 5009,
     "train_neg": 10018,
     "val": {
-      "precision": 0.7573812580231065,
-      "recall": 0.7370393504059962,
-      "f1": 0.7470718581829693,
-      "fpr": 0.11805121798875702,
+      "precision": 0.7099596231493943,
+      "recall": 0.6589631480324797,
+      "f1": 0.6835114998380305,
+      "fpr": 0.13460337289194255,
       "n": 4803.0,
-      "auc": 0.9013550829607199
+      "auc": 0.8543967094270015
     }
   },
   "account_model": {
@@ -38,141 +38,141 @@
     "train_attack": 285,
     "val_accounts": 134,
     "thresholds": {
-      "block": 0.290381004803937,
-      "review": 0.1295228952372755
+      "block": 0.308899445223958,
+      "review": 0.11916511720012386
     },
     "coefficients": [
       {
         "name": "d1_dup_rate",
-        "coef": 1.8258
+        "coef": 1.7896
       },
       {
         "name": "d2_followup_rate",
-        "coef": -1.2858
+        "coef": -1.2769
       },
       {
         "name": "d6_fake_prob_mean",
-        "coef": 1.0109
+        "coef": 1.0821
       },
       {
         "name": "d4_mean_temp",
-        "coef": 0.817
+        "coef": 0.78
       },
       {
         "name": "d4_elicit_mean",
-        "coef": 0.628
+        "coef": 0.6384
       },
       {
         "name": "d2_user_turns_per_session",
-        "coef": -0.6273
+        "coef": -0.6086
       },
       {
         "name": "d7_mean_concurrent_sessions",
-        "coef": -0.5947
+        "coef": -0.6074
       },
       {
         "name": "d1_max_dup",
-        "coef": 0.4342
+        "coef": 0.4282
       },
       {
         "name": "d3_repo_entropy",
-        "coef": 0.398
-      },
-      {
-        "name": "d2_stop_end_frac",
-        "coef": -0.3943
+        "coef": 0.3995
       },
       {
         "name": "d3_topic_entropy",
-        "coef": 0.3846
+        "coef": 0.3719
       },
       {
-        "name": "d7_req_per_active_hour",
-        "coef": 0.3662
+        "name": "d2_stop_end_frac",
+        "coef": -0.3647
       },
       {
         "name": "d3_distinct_repos",
-        "coef": -0.3489
+        "coef": -0.3591
+      },
+      {
+        "name": "d7_req_per_active_hour",
+        "coef": 0.3434
       },
       {
         "name": "d4_elicit_max",
-        "coef": 0.3036
-      },
-      {
-        "name": "d3_sessions_per_repo",
-        "coef": -0.1975
+        "coef": 0.3051
       },
       {
         "name": "d6_contradiction_session_frac",
-        "coef": -0.1922
+        "coef": -0.1927
+      },
+      {
+        "name": "d3_sessions_per_repo",
+        "coef": -0.1885
       },
       {
         "name": "d5_skeletons_per_session",
-        "coef": -0.1613
+        "coef": -0.1629
       },
       {
         "name": "d5_template_mass",
-        "coef": 0.1528
+        "coef": 0.1501
       },
       {
         "name": "d6_contradictions_per_100",
-        "coef": -0.1412
+        "coef": -0.1385
       },
       {
         "name": "d5_top_skeleton_frac",
-        "coef": 0.1396
-      },
-      {
-        "name": "d7_active_hours_per_day",
-        "coef": 0.1291
+        "coef": 0.1353
       },
       {
         "name": "d4_elicit_frac",
-        "coef": 0.1279
+        "coef": 0.1167
+      },
+      {
+        "name": "d7_active_hours_per_day",
+        "coef": 0.1048
       },
       {
         "name": "d1_cross_account_dup_rate",
-        "coef": -0.0925
-      },
-      {
-        "name": "d1_branch_frac",
-        "coef": -0.0621
+        "coef": -0.0934
       },
       {
         "name": "d2_correction_rate",
-        "coef": -0.0607
+        "coef": -0.0666
+      },
+      {
+        "name": "d1_branch_frac",
+        "coef": -0.0608
       },
       {
         "name": "d1_branch_factor",
-        "coef": -0.0541
-      },
-      {
-        "name": "d7_user_field_frac",
-        "coef": -0.0496
-      },
-      {
-        "name": "d7_distinct_users",
-        "coef": -0.0423
+        "coef": -0.0526
       },
       {
         "name": "d7_max_concurrent_sessions",
-        "coef": -0.0397
+        "coef": -0.0505
       },
       {
-        "name": "d2_return_rate",
-        "coef": -0.0263
+        "name": "d7_user_field_frac",
+        "coef": -0.0429
+      },
+      {
+        "name": "d7_distinct_users",
+        "coef": -0.037
       },
       {
         "name": "d1_hot_dup_rate",
-        "coef": 0.0236
+        "coef": 0.0272
+      },
+      {
+        "name": "d2_return_rate",
+        "coef": -0.0248
       },
       {
         "name": "d4_max_effort_frac",
-        "coef": 0.0191
+        "coef": 0.0225
       },
       {
         "name": "d4_max_tokens_frac",
-        "coef": 0.0191
+        "coef": 0.0225
       },
       {
         "name": "d4_n_gt1_rate",

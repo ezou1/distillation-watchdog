@@ -4,6 +4,7 @@ The functions take plain lists of texts and labels. `dw/train/train_all.py` call
 """
 from __future__ import annotations
 
+import random
 import re
 from collections import Counter
 from pathlib import Path
@@ -16,6 +17,7 @@ from sklearn.feature_extraction.text import ENGLISH_STOP_WORDS, TfidfVectorizer
 from sklearn.linear_model import LogisticRegression
 from sklearn.metrics import precision_recall_fscore_support, roc_auc_score
 from sklearn.pipeline import FeatureUnion, Pipeline
+from sklearn.preprocessing import FunctionTransformer
 
 from dw.common.embed import embed
 from dw.watchdog.detectors.common import DCFG
@@ -25,6 +27,9 @@ MODEL_FILES = {"d3": "d3_kmeans.pkl", "d4": "d4_elicit.pkl", "d6": "d6_realism.p
 
 def fit_topics(first_prompts: list[str], k: int | None = None) -> KMeans:
     """Fit k-means (k = detectors.d3.kmeans_k) on the embeddings of first prompts."""
+    n = DCFG["d3"].get("kmeans_fit_n", len(first_prompts))
+    if len(first_prompts) > n:
+        first_prompts = random.Random(DCFG["d3"]["seed"]).sample(first_prompts, n)
     k = min(k or DCFG["d3"]["kmeans_k"], len(first_prompts))
     return KMeans(n_clusters=k, n_init=4, random_state=DCFG["d3"]["seed"]).fit(embed(first_prompts))
 
@@ -40,8 +45,17 @@ def fit_elicitation(texts: list[str], labels: list[int]) -> Pipeline:
 
 def fit_realism(texts: list[str], labels: list[int]) -> Pipeline:
     """Fit char 3-5 gram TF-IDF and logistic regression on tool outputs (1 = LLM-written, 0 = real)."""
-    features = TfidfVectorizer(analyzer="char_wb", ngram_range=(3, 5), sublinear_tf=True, max_features=200_000)
+    features = Pipeline([
+        ("cut", FunctionTransformer(cut_tool_output)),
+        ("tfidf", TfidfVectorizer(analyzer="char_wb", ngram_range=(3, 5), sublinear_tf=True, max_features=200_000)),
+    ])
     return _fit(features, texts, labels, DCFG["d6"]["lr_C"])
+
+
+def cut_tool_output(texts: list[str]) -> list[str]:
+    """Keep the first detectors.d6.realism_chars characters of each tool output (training and inference)."""
+    n = DCFG["d6"]["realism_chars"]
+    return [t[:n] for t in texts]
 
 
 def _fit(features: Any, texts: list[str], labels: list[int], c: float) -> Pipeline:

@@ -2,6 +2,7 @@
 # End-to-end smoke test: start all five processes, send small normal and hydra traffic, check the results.
 # The lab uses a recorded model response, so this test does not call OpenRouter.
 set -uo pipefail
+export OMP_NUM_THREADS=1 OPENBLAS_NUM_THREADS=1 MKL_NUM_THREADS=1  # small per-request numpy calls: threads only spin
 cd "$(dirname "$0")/.."
 PY=.venv/bin/python
 SPEED="${SPEED:-3000}"

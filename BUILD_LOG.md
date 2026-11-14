@@ -35,12 +35,15 @@ Start time (UTC): 2026-11-14T08:02:05Z (see `.build_clock`).
 - D-27. The sender spreads 64 in-flight requests over 16 small HTTP clients. One large client pool reached only about 180 requests per second.
 - D-28. The label-permutation control reports the mean AUC and a permutation p-value. With unequal classes, the mean AUC of a shuffled model can be far from 0.5 on small sets.
 - D-29. LLM cost for the data build: about USD 2.36 on the helper model. No SWE-chat text went to OpenRouter.
+- D-30. The first full training run took 79 minutes. The limit is 10 CPU minutes. On this CPU, bge-small embeds 3 texts per second at 2,000 characters, and 34 texts per second at 256 characters. A batch size of 256 with 512-token texts used 8 GB of memory. Changes: the embedder reads the first 200 characters (`detectors.embed_max_chars`) with batch size 64. K-means uses a sample of 5,000 train first prompts.
+- D-31. A profile of the worker (27,316 requests in 150 s) showed three costs: the D6 shadow file system (`shlex` on the replay of branches), the D6 realism classifier, and the JSON encoding of each message in the prefix chain. Changes: a cache for the `shlex` tokens, the first 1,000 characters of a tool output for the realism classifier (in the pipeline, so training and inference are the same), and a bounded memo for message hashes (the hash values do not change).
 
 ## Milestones
 
 | Milestone | Plan | Actual | Note |
 |---|---|---|---|
 | M0 Preflight + contracts | 0:30 | 0:25 | Keys work. Both datasets are reachable. Contracts committed. 5 contract tests pass. |
+| M1 Parallel build | 3:30 | 0:41 | Six subagents. Each workstream passed its own tests on fixtures (commit 68039bf). The data build continued after this commit. |
 
 ## Cuts
 

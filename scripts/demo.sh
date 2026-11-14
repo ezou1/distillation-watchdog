@@ -1,6 +1,7 @@
 #!/usr/bin/env bash
 # Start all five processes. Use tmux if it is installed. Else start them in the background with logs in logs/.
 set -euo pipefail
+export OMP_NUM_THREADS=1 OPENBLAS_NUM_THREADS=1 MKL_NUM_THREADS=1  # small per-request numpy calls: threads only spin
 cd "$(dirname "$0")/.."
 PY=.venv/bin/python
 SCALE="${SCALE:-demo}"

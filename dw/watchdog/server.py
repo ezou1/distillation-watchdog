@@ -492,6 +492,8 @@ async def serve() -> None:
 
 def main() -> None:
     logging.basicConfig(level=logging.INFO, format="%(asctime)s %(name)s %(levelname)s %(message)s")
+    from dw.common import embed
+    embed.load_cache(cfg_path("cache") / "emb" / "emb.npz")   # vectors from train.sh and eval.sh
     asyncio.run(serve())
 
 

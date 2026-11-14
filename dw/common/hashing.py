@@ -25,8 +25,19 @@ def serialize(msg: Message) -> str:
     )
 
 
+_MEMO: dict[tuple, str] = {}
+_MEMO_MAX = 200_000
+
+
 def message_hash(msg: Message) -> str:
-    return _h(serialize(msg))
+    """Hash of serialize(msg). A bounded memo skips the JSON encoding of repeated messages (same result)."""
+    key = (msg.role, msg.tool, msg.text, json.dumps(msg.args, sort_keys=True) if msg.args else None)
+    h = _MEMO.get(key)
+    if h is None:
+        if len(_MEMO) >= _MEMO_MAX:
+            _MEMO.clear()
+        h = _MEMO[key] = _h(serialize(msg))
+    return h
 
 
 def prefix_chain(tools_schema_id: str, messages: Iterable[Message]) -> list[str]:
