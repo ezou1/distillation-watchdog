@@ -183,13 +183,13 @@ The realism classifier flags 0.046 of 3,000 real SWE-chat tool outputs in the ho
 
 | Measure | Value |
 |---|---|
-| Training, wall time (s) | 432.2 |
-| Training, CPU time (s) | 1,685.5 |
-| Evaluation, wall time (s) | 97.100 |
-| Evaluation, requests per second | 522.6 |
+| Training, wall time (s) | 681.6 |
+| Training, CPU time (s) | 1,994.4 |
+| Evaluation, wall time (s) | 56.800 |
+| Evaluation, requests per second | 893.1 |
 | Lab gateway load test, requests per second | 709.9 |
 | Lab gateway `handle()` p95 (ms) | 0.841 |
-| OpenRouter cost, total (USD) | 2.358 |
+| OpenRouter cost, total (USD) | 2.370 |
 <!-- RESULTS:END -->
 
 ## Leakage controls
@@ -245,10 +245,10 @@ The feature-family ablation in "Leakage controls" shows the result with and with
 - The two data sources come from different agent harnesses. The benchmark persona (normal) and the stealth persona (attack) mix the sources, and the controls measure the remaining source signal.
 - A shell command in the agent chat can read files outside `agent_workspace/` (for example `../.env`). Only the approval click prevents this.
 - The simulation clock runs faster than real time (`sim.speed` in `config.yaml`). A real deployment uses server time.
-- Training time: BUILD.md B9 sets a limit of 10 CPU minutes. Training does not meet this limit. The "Compute" table in "Results" shows the CPU time. The scenario replays through the full worker and the text embeddings use most of the time.
+- Training: BUILD.md B9 sets a limit of 10 CPU minutes. A first run computes the text embeddings, and it uses more than this limit (see "Compute" in "Results"). A later run uses the embedding cache in `cache/emb/` and stays below the limit.
 - Format probe (control 2) fails. Formatting features predict the data source. The largest features are markdown in user text and the session shape (number of user turns and tool results). Open-SWE prompts are GitHub issue texts, and SWE-chat prompts are chat messages. More scaffold stripping cannot remove this difference.
 - Path strings (for example `/home/` and `/workspace`) and the name of the agent harness in the text also show the source. A fix needs a new data build.
-- Cross-harness control (control 4) fails. Hydra recall on SWE-agent data is lower than on the main data.
+- Cross-harness control (control 4) fails. Hydra recall on SWE-agent data is lower than on the main data. The SWE-agent slice is small, so its hydra accounts get fewer sessions. Many of them have only one session. With one session, the repository and topic entropy (D3) is zero. Thus the control measures the size of the data slice more than the harness.
 - In the holdout, the campaign propagation does not increase the stealth recall. Most stealth accounts stay below the block threshold.
 - The training scenarios use a light stealth persona with one user turn per session. Thus the engagement features (D2) have a large weight. The holdout stealth persona adds follow-up turns.
 - The holdout has few normal accounts. Thus one falsely blocked account changes the false positive rate by a large step.

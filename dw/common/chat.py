@@ -106,12 +106,31 @@ def to_openai(messages: list[Message], schema_id: str) -> list[dict[str, Any]]:
     return out
 
 
-def from_openai(oa_messages: list[dict[str, Any]]) -> list[Message]:
-    """Convert OpenAI chat messages to canonical messages. System messages are dropped."""
+_CONVERTED: dict[int, tuple[dict[str, Any], str, list[Message]]] = {}
+_CONVERTED_MAX = 100_000
+
+
+def from_openai(oa_messages: list[dict[str, Any]], memo: bool = False) -> list[Message]:
+    """Convert OpenAI chat messages to canonical messages. System messages are dropped.
+
+    The scenario replay sends slices of one message list, so the same dict objects come again in each
+    request of a session. With `memo=True` (offline replay only), a bounded memo by object identity
+    converts each of them only once. The memo keeps a reference to the dict, so the identity cannot be
+    used again by a new object. The caller must not change a dict after it was sent.
+    """
     out: list[Message] = []
     kinds: dict[str, str] = {}
     for m in oa_messages:
         role = m.get("role")
+        kind_key = kinds.get(m.get("tool_call_id", ""), "other") if role == "tool" else ""
+        hit = _CONVERTED.get(id(m)) if memo else None
+        if hit is not None and hit[0] is m and hit[1] == kind_key:
+            out.extend(hit[2])
+            if role == "assistant":
+                for call, msg in zip(m.get("tool_calls") or [], (x for x in hit[2] if x.role == "tool_call")):
+                    kinds[call.get("id", "")] = msg.tool or "other"
+            continue
+        start = len(out)
         content = _text(m.get("content"))
         if role == "user":
             out.append(Message(role="user", text=content))
@@ -126,6 +145,10 @@ def from_openai(oa_messages: list[dict[str, Any]]) -> list[Message]:
         elif role == "tool":
             kind = kinds.get(m.get("tool_call_id", ""), "other")
             out.append(Message(role="tool_result", text=content, tool=kind))
+        if memo:
+            if len(_CONVERTED) >= _CONVERTED_MAX:
+                _CONVERTED.clear()
+            _CONVERTED[id(m)] = (m, kind_key, out[start:])
     return out
 
 

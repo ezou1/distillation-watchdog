@@ -265,52 +265,53 @@
   "compute": {
     "train": {
       "load_splits": {
-        "wall_s": 6.68,
-        "cpu_s": 6.7,
-        "peak_rss_mb": 1919.3
+        "wall_s": 5.56,
+        "cpu_s": 5.6,
+        "peak_rss_mb": 1928.5
       },
       "d3_topics": {
-        "wall_s": 0.96,
-        "cpu_s": 1.0,
-        "peak_rss_mb": 2436.4
+        "wall_s": 0.93,
+        "cpu_s": 0.9,
+        "peak_rss_mb": 2445.6
       },
       "d4_elicitation": {
-        "wall_s": 9.8,
-        "cpu_s": 9.8,
-        "peak_rss_mb": 2793.3
+        "wall_s": 9.45,
+        "cpu_s": 9.4,
+        "peak_rss_mb": 2807.9
       },
       "d6_realism": {
-        "wall_s": 12.17,
-        "cpu_s": 12.2,
-        "peak_rss_mb": 2836.5
+        "wall_s": 12.87,
+        "cpu_s": 12.9,
+        "peak_rss_mb": 2834.0
       },
       "account_model": {
-        "wall_s": 398.45,
-        "cpu_s": 1650.7,
-        "peak_rss_mb": 2836.5
+        "wall_s": 191.42,
+        "cpu_s": 377.5,
+        "peak_rss_mb": 2834.0
       },
-      "train_total_s": 432.2,
-      "train_total_cpu_s": 1685.5
+      "train_total_s": 224.5,
+      "train_total_cpu_s": 411.7
     },
     "eval": {
       "holdout_requests": 50767,
-      "wall_s": 97.1,
-      "requests_per_s": 522.6
+      "wall_s": 56.8,
+      "requests_per_s": 893.1
     },
     "load": {
       "requests": 5000,
       "concurrency": 64,
       "client_procs": 4,
-      "seconds": 7.106,
-      "rps": 703.7,
+      "seconds": 7.043,
+      "rps": 709.9,
       "statuses": {
-        "200": 5000
+        "200": 4740,
+        "403": 260
       },
-      "client_p50_ms": 51.38,
-      "client_p95_ms": 143.95,
-      "lab_handle_p50_ms": 0.3,
-      "lab_handle_p95_ms": 0.749,
-      "watchdog_connected": false,
+      "client_p50_ms": 70.24,
+      "client_p95_ms": 193.28,
+      "lab_handle_p50_ms": 0.341,
+      "lab_handle_p95_ms": 0.841,
+      "watchdog_connected": true,
       "target": {
         "rps_min": 300,
         "handle_p95_ms_max": 5.0
@@ -325,13 +326,13 @@
           "cost_usd": 9.472e-05
         },
         "qwen/qwen3-coder-30b-a3b-instruct": {
-          "calls": 9306,
-          "prompt_tokens": 4534498,
-          "completion_tokens": 2894609,
-          "cost_usd": 2.358020419999993
+          "calls": 9406,
+          "prompt_tokens": 4576859,
+          "completion_tokens": 2905319,
+          "cost_usd": 2.369493289999991
         }
       },
-      "total_cost_usd": 2.358115
+      "total_cost_usd": 2.369588
     }
   }
 }

@@ -134,3 +134,26 @@ def test_real_openswe_sessions_have_zero_contradictions() -> None:
         cuts = [i + 1 for i, m in enumerate(msgs) if m.role == "tool_result"]
         summaries, _ = run_session(msgs, cuts=cuts)
         assert summaries == [], summaries
+
+
+def test_realism_batch_equals_single_scores() -> None:
+    """Queued tool outputs are scored in one batch. The account mean must equal one-by-one scoring."""
+    class Model:
+        calls = 0
+
+        def predict_proba(self, texts):
+            import numpy as np
+            Model.calls += 1
+            p = np.array([min(1.0, len(t) / 100) for t in texts])
+            return np.stack([1 - p, p], axis=1)
+
+    det = FakeEnvDetector(Model())
+    st = {"prob_sum": 0.0, "n_scored": 0}
+    texts = ["a" * 10, "b" * 50, "a" * 10, "c" * 80]
+    for t in texts:
+        det._queue(st, t)
+    det._flush()
+    assert Model.calls == 1
+    assert st["n_scored"] == 4
+    assert abs(st["prob_sum"] - sum(det.fake_prob(t) for t in texts)) < 1e-12
+    assert abs(st["prob_sum"] - (0.1 + 0.5 + 0.1 + 0.8)) < 1e-12

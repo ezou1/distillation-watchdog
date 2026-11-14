@@ -7,11 +7,11 @@
       "cost_usd": 9.472e-05
     },
     "qwen/qwen3-coder-30b-a3b-instruct": {
-      "calls": 9306,
-      "prompt_tokens": 4534498,
-      "completion_tokens": 2894609,
-      "cost_usd": 2.358020419999993
+      "calls": 9406,
+      "prompt_tokens": 4576859,
+      "completion_tokens": 2905319,
+      "cost_usd": 2.369493289999991
     }
   },
-  "total_cost_usd": 2.358115
+  "total_cost_usd": 2.369588
 }

@@ -267,15 +267,42 @@ class FakeEnvDetector:
     def __init__(self, realism_model: Any | None = None) -> None:
         self.model = realism_model
         self._scores: dict[str, float] = {}
+        self._pending: list[tuple[dict, str]] = []     # (account scratch, text hash) not yet added
+        self._texts: dict[str, str] = {}               # text hash -> text, for the next batch
 
     def fake_prob(self, text: str) -> float:
         """Return the probability that a tool output is LLM-written. Cached by text hash."""
         key = text_hash(text)
         if key not in self._scores:
-            if len(self._scores) > 200_000:
-                self._scores.clear()
-            self._scores[key] = float(self.model.predict_proba([text])[0, 1])  # type: ignore[union-attr]
+            self._texts[key] = text
+            self._score_batch()
         return self._scores[key]
+
+    def _queue(self, st: dict, text: str) -> None:
+        """Score later in one batch: one classifier call per tool output is slow (per-call overhead)."""
+        key = text_hash(text)
+        if key not in self._scores:
+            self._texts[key] = text
+        self._pending.append((st, key))
+
+    def _score_batch(self) -> None:
+        """Score all texts that wait in `_texts` with one classifier call."""
+        keys = list(self._texts)
+        if keys:
+            probs = self.model.predict_proba([self._texts[k] for k in keys])[:, 1]  # type: ignore[union-attr]
+            self._scores.update(zip(keys, map(float, probs)))
+            self._texts.clear()
+
+    def _flush(self) -> None:
+        """Add the queued probabilities to the account sums. Called before features are read."""
+        if self._pending:
+            self._score_batch()
+            for st, key in self._pending:
+                st["prob_sum"] += self._scores[key]
+                st["n_scored"] += 1
+            self._pending.clear()
+        if len(self._scores) > 200_000:   # clear only when nothing waits for a score
+            self._scores.clear()
 
     def observe(self, view: DetectorView, acct: AccountState) -> list[Evidence]:
         st = scratch(acct, self.name)
@@ -293,8 +320,7 @@ class FakeEnvDetector:
             for c in sess["fs"].step(m):
                 out += self._record(st, view, c)
             if m.role == "tool_result" and self.model is not None and m.text.strip():
-                st["prob_sum"] += self.fake_prob(m.text)
-                st["n_scored"] += 1
+                self._queue(st, m.text)
         sess["upto"] = max(sess["upto"], len(view.messages))
         return out
 
@@ -306,6 +332,7 @@ class FakeEnvDetector:
         return [new_evidence(self.name, view, summary=c.summary, message_index=c.message_index)]
 
     def features(self, acct: AccountState) -> dict[str, float]:
+        self._flush()
         st = acct.scratch.get(self.name) or {}
         sessions = st.get("sessions", {})
         n_results = sum(s["fs"].n_results for s in sessions.values())

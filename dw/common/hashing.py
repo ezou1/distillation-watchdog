@@ -29,22 +29,36 @@ _MEMO: dict[tuple, str] = {}
 _MEMO_MAX = 200_000
 
 
-def message_hash(msg: Message) -> str:
-    """Hash of serialize(msg). A bounded memo skips the JSON encoding of repeated messages (same result)."""
+_BY_ID: dict[int, tuple[Message, str]] = {}
+
+
+def message_hash(msg: Message, memo: bool = False) -> str:
+    """Hash of serialize(msg). A bounded memo skips the JSON encoding of repeated messages (same result).
+
+    With `memo=True` (offline replay only), a first memo uses the object identity: `from_openai` gives the
+    same Message object again. It keeps a reference, so the identity cannot be used again by a new object.
+    """
+    hit = _BY_ID.get(id(msg)) if memo else None
+    if hit is not None and hit[0] is msg:
+        return hit[1]
     key = (msg.role, msg.tool, msg.text, json.dumps(msg.args, sort_keys=True) if msg.args else None)
     h = _MEMO.get(key)
     if h is None:
         if len(_MEMO) >= _MEMO_MAX:
             _MEMO.clear()
         h = _MEMO[key] = _h(serialize(msg))
+    if memo:
+        if len(_BY_ID) >= _MEMO_MAX:
+            _BY_ID.clear()
+        _BY_ID[id(msg)] = (msg, h)
     return h
 
 
-def prefix_chain(tools_schema_id: str, messages: Iterable[Message]) -> list[str]:
-    """Return [h_0, h_1, ..., h_n]. The last item is the request key."""
+def prefix_chain(tools_schema_id: str, messages: Iterable[Message], memo: bool = False) -> list[str]:
+    """Return [h_0, h_1, ..., h_n]. The last item is the request key. `memo`: see `message_hash`."""
     chain = [_h("schema:" + tools_schema_id)]
     for msg in messages:
-        chain.append(_h(chain[-1] + message_hash(msg)))
+        chain.append(_h(chain[-1] + message_hash(msg, memo)))
     return chain
 
 

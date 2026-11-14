@@ -24,7 +24,7 @@ class OfflineResult:
 
 def _make_lab(worker: Any) -> Any:
     from dw.lab.gateway import Lab
-    return Lab(sink=DirectSink(worker), blocklist=DirectBlocklist(worker))
+    return Lab(sink=DirectSink(worker), blocklist=DirectBlocklist(worker), replay_memo=True)
 
 
 async def _run(scenario: Scenario, worker: Any) -> OfflineResult:

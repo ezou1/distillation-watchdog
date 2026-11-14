@@ -285,7 +285,7 @@ train:
   elicit_prompts: 3000
   realism_neg_ratio: 2
   request_rows_max: 200000
-  processes: 3                  # scenarios run in parallel processes (each needs up to 4.5 GB; WSL has 24 GB)
+  processes: 2                  # scenarios run in parallel processes (each needs up to 4.5 GB). More processes share cores and cost more CPU time.
 
 controls:
   seed: 17

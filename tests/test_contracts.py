@@ -58,3 +58,15 @@ def test_scrub() -> None:
     s = scrub("mail bob@x.com key sk-abcdefghijkl ghp_abcdefghijk path /Users/bob/code and /home/alice/x")
     assert "bob@x.com" not in s and "sk-abc" not in s and "ghp_" not in s
     assert "/Users/bob" not in s and "/home/alice" not in s and "/home/<user>/code" in s
+
+
+def test_offline_memo_gives_the_same_messages_and_chain() -> None:
+    """The offline replay memo (object identity) must give the same result as a fresh conversion."""
+    for sid in ("standard_agent", "saas_custom", "bench_harness"):
+        oa = to_openai(SESSION, sid)
+        for k in range(1, len(oa) + 1):       # a session sends growing slices of one message list
+            plain = from_openai(oa[:k])
+            memo = from_openai(oa[:k], memo=True)
+            assert memo == plain
+            assert prefix_chain(sid, memo, memo=True) == prefix_chain(sid, plain)
+        assert from_openai(oa, memo=True) == SESSION

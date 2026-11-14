@@ -82,8 +82,10 @@ class LabStats:
 class Lab:
     """Accounts, inline duplicate checks, backend selection, and event emission."""
 
-    def __init__(self, sink: EventSink, blocklist: BlocklistSource, live: LiveBackend | None = None) -> None:
+    def __init__(self, sink: EventSink, blocklist: BlocklistSource, live: LiveBackend | None = None,
+                 replay_memo: bool = False) -> None:
         self.sink = sink
+        self.replay_memo = replay_memo   # offline replay: message objects repeat, convert and hash them once
         self.blocklist = blocklist
         self.live = live or LiveBackend()
         self.replay = ReplayBackend()
@@ -137,9 +139,9 @@ class Lab:
     def _make_event(self, key: str, body: dict[str, Any], sim_time: float) -> RequestEvent:
         """Build the event from the request without `x_replay`. Update the duplicate counters."""
         acct = self.accounts.setdefault(key, Account())
-        messages = from_openai(body.get("messages") or [])
+        messages = from_openai(body.get("messages") or [], self.replay_memo)
         schema_id = schema_id_of(body.get("tools"))
-        chain = prefix_chain(schema_id, messages)
+        chain = prefix_chain(schema_id, messages, self.replay_memo)
         temperature = float(body["temperature"]) if body.get("temperature") is not None else 1.0
         dup, global_dup = self._count(key, chain[-1])
         self._next_id += 1
