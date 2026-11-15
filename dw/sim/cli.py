@@ -27,11 +27,13 @@ from rich.text import Text
 
 from dw.common import term
 from dw.common.config import CFG, ROOT
+from dw.common.react_app import DEFAULT_DIST, mount_react_app
 from dw.sim.personas import ROLE_PERSONAS, TITLES
 from dw.sim.scenario import Scenario, build_scenario
 from dw.sim.sender import Counters, Sender, make_clients
 
 PORTS = {"normal": CFG["ports"]["normal_gen"], "attack": CFG["ports"]["attack_gen"]}
+APP_DIST = DEFAULT_DIST  # the React build, served at /app
 
 
 class Generator:
@@ -228,6 +230,7 @@ def make_app(gen: Generator) -> Any:
         gen.stop(body["persona"])
         return {"ok": True}
 
+    mount_react_app(app, APP_DIST)
     return app
 
 

@@ -26,9 +26,11 @@ from fastapi.staticfiles import StaticFiles
 
 from dw.common.config import CFG, ROOT, salt
 from dw.common.hashing import pseudonym, text_hash
+from dw.common.react_app import DEFAULT_DIST, mount_react_app
 
 FIXTURE = ROOT / "tests" / "fixtures" / "scenario_small.jsonl"
 STATIC = ROOT / "static"
+APP_DIST = DEFAULT_DIST  # the React build, served at /app
 REPORTS = ROOT / "reports"
 YOU_ID = "acct-agentchat"
 
@@ -592,6 +594,7 @@ def create_app(mock: Optional[MockWatchdog] = None, prefill: float = 0.0, run_ti
         return FileResponse(STATIC / "dashboard.html")
 
     app.mount("/static", StaticFiles(directory=STATIC), name="static")
+    mount_react_app(app, APP_DIST)
 
     @app.get("/reports/{name}")
     def report_file(name: str) -> Response:
