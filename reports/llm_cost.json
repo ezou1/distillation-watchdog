@@ -1,10 +1,10 @@
 {
   "models": {
     "qwen/qwen3-coder-next": {
-      "calls": 1,
-      "prompt_tokens": 656,
-      "completion_tokens": 20,
-      "cost_usd": 9.472e-05
+      "calls": 7,
+      "prompt_tokens": 7889,
+      "completion_tokens": 1028,
+      "cost_usd": 0.00152428
     },
     "qwen/qwen3-coder-30b-a3b-instruct": {
       "calls": 9406,
@@ -13,5 +13,5 @@
       "cost_usd": 2.369493289999991
     }
   },
-  "total_cost_usd": 2.369588
+  "total_cost_usd": 2.371018
 }
