@@ -6,6 +6,11 @@ import type { GeneratorKind } from "@/lib/origin";
 
 export type Route =
   | { page: "live" }
+  // The four displays that only Baker Street (the dashboard) has.
+  | { page: "activity" }
+  | { page: "accounts" }
+  | { page: "messages" }
+  | { page: "metrics" }
   | { page: "account"; id: string }
   | { page: "campaigns"; id?: string }
   | { page: "eval" }
@@ -15,7 +20,8 @@ export type Route =
 export function parseRoute(hash: string): Route {
   const parts = hash.replace(/^#\/?/, "").split("/").filter(Boolean).map(decodeURIComponent);
   const [page, id] = parts;
-  if (page === "accounts" && id) return { page: "account", id };
+  if (page === "accounts") return id ? { page: "account", id } : { page: "accounts" };
+  if (page === "activity" || page === "messages" || page === "metrics") return { page };
   if (page === "campaigns") return id ? { page: "campaigns", id } : { page: "campaigns" };
   if (page === "eval") return { page: "eval" };
   if (page === "traffic") return { page: "traffic", kind: id === "attack" ? "attack" : "normal" };
@@ -35,6 +41,11 @@ export function routeHref(route: Route): string {
       return `#/traffic/${route.kind}`;
     case "agent":
       return "#/agent";
+    case "activity":
+    case "accounts":
+    case "messages":
+    case "metrics":
+      return `#/${route.page}`;
     default:
       return "#/live";
   }

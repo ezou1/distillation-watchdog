@@ -15,6 +15,7 @@ import {
 } from "lucide-react";
 import { useEffect, useMemo, useState } from "react";
 
+import { BakerApp } from "@/baker/BakerApp";
 import { CommandPalette } from "@/components/CommandPalette";
 import { EvidenceDialog } from "@/components/EvidenceDialog";
 import { Problem } from "@/components/Notes";
@@ -36,11 +37,7 @@ import { routeHref, useRoute, type Route } from "@/lib/router";
 import { STATES, STATE_META } from "@/lib/states";
 import { setTheme, useTheme } from "@/lib/theme";
 import { cn } from "@/lib/utils";
-import { Account } from "@/pages/Account";
 import { AgentChat } from "@/pages/AgentChat";
-import { Campaigns } from "@/pages/Campaigns";
-import { Evaluation } from "@/pages/Evaluation";
-import { Live } from "@/pages/Live";
 import { TRAFFIC_TITLE, Traffic } from "@/pages/Traffic";
 
 const SIDEBAR_KEY = "dw-sidebar-collapsed";
@@ -346,20 +343,9 @@ function Page({ route, role }: { route: Route; role: Role }) {
   if (role === "agent") return <AgentChat />;
   // A generator server serves only its own page.
   if (isGenerator(role)) return <Traffic kind={role} role={role} />;
-  switch (route.page) {
-    case "account":
-      return <Account id={route.id} />;
-    case "campaigns":
-      return <Campaigns selected={route.id ?? null} />;
-    case "eval":
-      return <Evaluation />;
-    case "traffic":
-      return <Traffic key={route.kind} kind={route.kind} role={role} />;
-    case "agent":
-      return <AgentChat />;
-    default:
-      return <Live />;
-  }
+  // The dashboard pages never come here: App shows Baker Street for them.
+  if (route.page === "agent") return <AgentChat />;
+  return <Traffic key={route.page === "traffic" ? route.kind : "normal"} kind={route.page === "traffic" ? route.kind : "normal"} role={role} />;
 }
 
 export default function App() {
@@ -376,8 +362,14 @@ export default function App() {
     }
   });
 
+  // The dashboard pages are Baker Street: its own shell, with no sidebar. The traffic pages and the agent chat
+  // keep the shell below.
+  const baker = Boolean(role && hasDashboard(role)) && route.page !== "traffic" && route.page !== "agent";
+
   useEffect(() => {
     const onKey = (event: KeyboardEvent) => {
+      // Baker Street has its own search on the same keys.
+      if (baker) return;
       if ((event.metaKey || event.ctrlKey) && event.key.toLowerCase() === "k" && role && hasDashboard(role)) {
         event.preventDefault();
         setPaletteOpen((open) => !open);
@@ -385,7 +377,7 @@ export default function App() {
     };
     window.addEventListener("keydown", onKey);
     return () => window.removeEventListener("keydown", onKey);
-  }, [role]);
+  }, [role, baker]);
 
   const toggleSidebar = () => {
     setCollapsed((was) => {
@@ -405,6 +397,17 @@ export default function App() {
 
   // The first paint waits for one local request that tells which server serves the page.
   if (!role || !context) return <div className="h-dvh" aria-busy="true" />;
+
+  if (baker) {
+    return (
+      <AppContext.Provider value={context}>
+        <TooltipProvider delayDuration={300}>
+          <BakerApp route={route} />
+          <EvidenceDialog id={evidenceId} onClose={() => setEvidenceId(null)} />
+        </TooltipProvider>
+      </AppContext.Provider>
+    );
+  }
 
   const items = navItems(role);
   const dashboard = hasDashboard(role);

@@ -14,7 +14,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { useAccount } from "@/hooks/queries";
 import { formatNumber, formatScore } from "@/lib/format";
 import { routeHref } from "@/lib/router";
-import { detectorMeta, stateMeta } from "@/lib/states";
+import { detectorMeta, featureWords, stateMeta } from "@/lib/states";
 import { cn } from "@/lib/utils";
 
 const FEATURES_SHOWN = 10;
@@ -46,7 +46,7 @@ function RiskProfile({ account }: { account: AccountDetail }) {
     <section className="radar-band overflow-hidden rounded-xl border border-line bg-panel">
       <div className="px-5 pt-4 pb-5">
         <div className="flex items-center justify-between gap-3">
-          <span className="readout">{scored ? "Risk profile complete" : "Risk profile pending"}</span>
+          <span className="readout">{scored ? "Score" : "No score yet"}</span>
           <StateBadge state={account.state} />
         </div>
         <div className="display mt-4 text-[44px] leading-none">{formatScore(account.score)}</div>
@@ -131,7 +131,9 @@ function FeatureTable({ features }: { features: Feature[] }) {
         <TableBody>
           {shown.map((feature) => (
             <TableRow key={feature.name} className="hover:bg-hover">
-              <TableCell className="py-1.5 pl-4 font-mono text-[11.5px]">{feature.name}</TableCell>
+              <TableCell className="py-1.5 pl-4 text-[12px]" title={feature.name}>
+                {featureWords(feature.name)}
+              </TableCell>
               <TableCell className="py-1.5 text-[12px] text-ink-3">{detectorMeta(feature.name).name}</TableCell>
               <TableCell className="py-1.5 text-right font-mono text-[11.5px] tabular-nums">
                 {formatNumber(feature.value)}
@@ -200,7 +202,7 @@ export function AccountView({ id, peek = false }: { id: string; peek?: boolean }
 
       <div className={cn("grid gap-5", !peek && "2xl:grid-cols-[minmax(0,3fr)_minmax(0,2fr)]")}>
         <Panel>
-          <PanelHeader title="What drives the score" detail="contribution to the log-odds, largest first" />
+          <PanelHeader title="What drives the score" detail="the largest effect is first" />
           <div className="p-4">
             {contributions.length ? (
               <ContributionBars contributions={contributions} />
@@ -210,7 +212,7 @@ export function AccountView({ id, peek = false }: { id: string; peek?: boolean }
           </div>
         </Panel>
         <Panel>
-          <PanelHeader title="Score over time" detail="simulation clock" />
+          <PanelHeader title="Score over time" detail="simulated time" />
           <div className="h-56 p-3">
             {history.length ? (
               <ScoreHistoryChart history={history} />
