@@ -158,7 +158,7 @@ sim:
 lab:
   ingest_interval_s: 0.2
   ingest_buffer_max: 20000
-  blocklist_interval_s: 1.0
+  blocklist_interval_s: 0.5    # block list poll. With rescore_interval_s, the delay from a decided block to the first 403
   stats_window: 5000            # handle() latencies kept for p50/p95
   rps_window_s: 5.0             # time window for requests per second
   load_client_procs: 4          # load test client processes (one Python client is slower than the lab)
@@ -166,7 +166,7 @@ lab:
 watchdog:
   queue_max: 50000
   sqlite_flush_s: 1.0
-  rescore_interval_s: 2.0
+  rescore_interval_s: 0.5      # rescores only the accounts with new requests, so a shorter interval adds little work
   campaign_interval_s: 10.0
   offline_rescore_every: 200     # events between rescoring in offline mode
   offline_campaign_every: 1000   # events between campaign runs in offline mode

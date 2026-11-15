@@ -51,7 +51,6 @@ function totals(personas: Record<string, PersonaCounters>) {
   return {
     sent: all.reduce((sum, c) => sum + c.sent, 0),
     served: all.reduce((sum, c) => sum + c.served, 0),
-    blocked: all.reduce((sum, c) => sum + c.blocked, 0),
     leaked: all.reduce((sum, c) => sum + c.leaked, 0),
     planned: plannedKnown ? started.reduce((sum, c) => sum + (c.sessions_planned ?? 0), 0) : null,
   };
@@ -75,13 +74,13 @@ function Overview({ kind, status }: { kind: GeneratorKind; status: GeneratorStat
   if (!status) rest = "The page tries again every second.";
   else if (sum.sent === 0) rest = "Start a persona below. Its accounts register with the lab, then its requests begin.";
   else {
-    rest = `The gateway served ${formatNumber(sum.served)} of ${formatNumber(sum.sent)} requests and refused ${formatNumber(sum.blocked)}.`;
-    if (kind === "attack" && sum.leaked > 0) {
+    rest = `The gateway served ${formatNumber(sum.served)} of ${formatNumber(sum.sent)} requests.`;
+    if (sum.leaked > 0) {
       const share = leakShare(sum.leaked, sum.planned);
       rest +=
         share === null
-          ? ` Before the blocks, ${formatNumber(sum.leaked)} complete ${sum.leaked === 1 ? "session" : "sessions"} got through.`
-          : ` Before the blocks, ${formatLeakShare(share)} of the complete sessions got through (${formatNumber(sum.leaked)} of ${formatNumber(sum.planned)}).`;
+          ? ` ${formatNumber(sum.leaked)} ${sum.leaked === 1 ? "session" : "sessions"} completed.`
+          : ` ${formatLeakShare(share)} of the sessions completed (${formatNumber(sum.leaked)} of ${formatNumber(sum.planned)}).`;
     }
   }
 
@@ -121,7 +120,6 @@ function PersonaRow({
   onToggle: () => void;
 }) {
   const meta = persona(name);
-  const share = counters.sent > 0 ? counters.blocked / counters.sent : 0;
   const leak = leakShare(counters.leaked, counters.sessions_planned);
   return (
     <li className="grid gap-x-6 gap-y-4 px-5 py-4 lg:grid-cols-[minmax(0,1.4fr)_minmax(0,2fr)_auto] lg:items-center">
@@ -141,31 +139,15 @@ function PersonaRow({
         {meta.does && <p className="mt-1 text-[12.5px] leading-relaxed text-ink-3">{meta.does}</p>}
       </div>
 
-      <div className="grid min-w-0 grid-cols-3 gap-4 sm:grid-cols-5">
+      <div className="grid min-w-0 grid-cols-2 gap-4 sm:grid-cols-4">
         <Count label="Accounts" value={counters.accounts} />
         <Count label="Sent" value={counters.sent} />
         <Count label="Served" value={counters.served} />
-        <div className="min-w-0">
-          <div className="text-[11.5px] text-ink-3">Blocked</div>
-          <div className={cn("font-mono text-[14px] tabular-nums", counters.blocked > 0 && "text-st-block-ink")}>
-            {formatNumber(counters.blocked)}
-          </div>
-          <div
-            className="mt-1.5 h-1 overflow-hidden rounded-full bg-hover"
-            role="meter"
-            aria-label="Share of requests blocked"
-            aria-valuemin={0}
-            aria-valuemax={1}
-            aria-valuenow={share}
-          >
-            <div className="risk-fill h-full rounded-full" style={{ width: `${share * 100}%` }} />
-          </div>
-        </div>
         {leak === null ? (
-          <Count label="Leaked" value={counters.leaked} />
+          <Count label="Completed" value={counters.leaked} />
         ) : (
           <div className="min-w-0">
-            <div className="text-[11.5px] text-ink-3">Leaked</div>
+            <div className="text-[11.5px] text-ink-3">Completed</div>
             <div className="font-mono text-[14px] tabular-nums">{formatLeakShare(leak)}</div>
             <div className="mt-0.5 font-mono text-[11.5px] text-ink-3 tabular-nums">
               {formatNumber(counters.leaked)} of {formatNumber(counters.sessions_planned)}
@@ -277,8 +259,8 @@ export function Traffic({ kind, role }: { kind: GeneratorKind; role: Role }) {
         <HelpNote open={helpOpen} onClose={toggleHelp}>
           Each row is one persona: a kind of {kind === "attack" ? "distillation attack" : "normal customer"}. Start
           sends its requests to the lab at the scale and speed above; speed is simulated seconds per real second.
-          Blocked counts refused requests, not accounts. Leaked is the share of a persona's complete sessions that
-          it received before its accounts were blocked, with the count below it. For the state of each account, see the{" "}
+          Completed is the share of a persona's sessions that ran to the end, with the count below it. A session that
+          the watchdog blocks partway does not complete. For the state of each account, see the{" "}
           <a href={dashboardHref} className="text-brand-ink underline-offset-2 hover:underline">
             dashboard
           </a>
