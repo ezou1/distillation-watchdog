@@ -43,19 +43,19 @@ The detectors and how they decide:
 | Detector | Signal | Used in |
 |---|---|---|
 | D1 redundancy | The same conversation state is sent many times (duplicates from the prefix hash chain). | **Rules score** |
-| D2 engagement | Follow-up turns, corrections, and returns to the same repository. | Learned model |
-| D3 coverage | The number of repositories and topics of the account. | Learned model |
+| D2 engagement | Follow-up turns, corrections, and returns to the same repository. | Computed, not scored (failed the validation check, D-49) |
+| D3 coverage | The number of repositories and topics of the account. | Computed, not scored (failed the validation check, D-49) |
 | D4 elicitation | User prompts that ask for full reasoning and detail (context model), and request parameters (temperature, `max_tokens`, reasoning effort). | Learned model |
-| D6 environment | Tool outputs that a model wrote instead of a real machine (context model). | Learned model |
+| D6 environment | Tool outputs that a model wrote instead of a real machine (context model). | Evidence, not scored (source shift, D-49) |
 | D7 volume | Request rate, active hours, concurrent sessions, and the `user` field. | Exoneration only |
 
 The account state is the most severe of three levels:
 
 1. The **rules score**: the share of requests that repeat an earlier context of the account (D1). Its block and review thresholds come from the validation split. D7 can only lower it: an account with many distinct `user` values or a declared use gets at most "review" from the rules.
-2. The **learned model**: a logistic regression over D2, D3, D4, and D6. It is trained on feature snapshots taken at several request counts, because it decides on partial account histories.
+2. The **learned model**: a logistic regression over the D4 features (`account.model_groups` in `config.yaml`). It is trained on feature snapshots taken at several request counts, because it decides on partial account histories.
 3. The **campaign**: Louvain groups of linked accounts (shared tasks, synchronized activity, a shared rare tool format).
 
-The **context model** is a fine-tuned small language model (Qwen3-0.6B-Base). It gives the text scores of D4 and D6. It runs on a GPU machine behind a scoring service, and the watchdog reaches it through an SSH tunnel. Scores are cached on disk. If the service does not answer, D4 and D6 leave the text features out, and the account model uses the training mean.
+The **context model** is a fine-tuned small language model (Qwen3-0.6B-Base). It gives the text scores of D4 and D6. It runs on a GPU machine behind a scoring service, and the watchdog reaches it through an SSH tunnel. Scores are cached on disk. If the service does not answer, D4 and D6 leave the text features out, and the learned model can then only raise an account to "review" (D-50).
 
 ## Data and licences
 
