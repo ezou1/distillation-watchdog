@@ -20,7 +20,10 @@ from fastapi.responses import FileResponse, JSONResponse, Response
 from dw.agent.tools import Sandbox, SandboxError, parse_args
 from dw.common.chat import tool_defs
 from dw.common.config import CFG, ROOT, path
+from dw.common.react_app import DEFAULT_DIST, mount_react_app
 from dw.common.term import console
+
+APP_DIST = DEFAULT_DIST  # the React build, served at /app
 
 LabCall = Callable[[dict[str, Any]], Awaitable[tuple[int, dict[str, Any]]]]
 
@@ -239,6 +242,8 @@ def build_app(agent: Agent) -> FastAPI:
     @app.get("/")
     async def index() -> FileResponse:
         return FileResponse(ROOT / "static" / "agent.html")
+
+    mount_react_app(app, APP_DIST)
 
     @app.post("/api/chat", response_model=None)
     async def chat(request: Request) -> dict | JSONResponse:

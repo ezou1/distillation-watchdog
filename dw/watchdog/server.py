@@ -23,6 +23,7 @@ from rich.console import RenderableType
 
 from dw.common import term
 from dw.common.config import CFG, ROOT, path as cfg_path
+from dw.common.react_app import DEFAULT_DIST, mount_react_app
 from dw.common.schema import AccountState, Evidence, RequestEvent
 from dw.common.scrub import scrub
 from dw.watchdog import casefile
@@ -33,6 +34,7 @@ from dw.watchdog.worker import Worker, display_name, top_reasons
 log = logging.getLogger("dw.watchdog.server")
 
 STATIC = ROOT / "static"
+APP_DIST = DEFAULT_DIST  # the React build, served at /app
 PLACEHOLDER = "<!DOCTYPE html><html><body><h1>Distillation Watchdog</h1><p>The dashboard is not built yet. " \
               "See <a href='/api/summary'>/api/summary</a>.</p></body></html>"
 EVAL_FILES = ("metrics", "controls", "compute", "load")
@@ -428,6 +430,7 @@ def create_app(worker: Optional[Worker] = None, store: Optional[EventStore] = No
         return FileResponse(page) if page.exists() else HTMLResponse(PLACEHOLDER)
 
     app.mount("/static", StaticFiles(directory=STATIC, check_dir=False), name="static")
+    mount_react_app(app, APP_DIST)
     return app
 
 

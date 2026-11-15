@@ -1,0 +1,301 @@
+@import "tailwindcss";
+@import "tw-animate-css";
+@import "@fontsource-variable/inter/opsz.css";
+@import "@fontsource-variable/jetbrains-mono";
+
+@custom-variant dark (&:where([data-theme="dark"], [data-theme="dark"] *));
+
+/*
+ * Tokens. Structure follows Linear (a dark frame around an inset sheet); color follows Stripe Radar
+ * (indigo night, lavender greys, violet action, a violet-to-magenta risk scale).
+ * Rules that keep color meaningful:
+ *   - --brand (violet) is for interaction only: links, focus, selection, primary buttons.
+ *   - --st-* are for account and campaign states only. Each has a fill and an ink (text) step.
+ *   - "Blocked" is the magenta at the top of the risk scale, so a full risk bar and a block read as one thing.
+ * Chart colors (--viz-*) are separate so a series never impersonates a state.
+ */
+:root {
+  color-scheme: dark;
+  --frame: #080a1a;
+  --background: #0d1024;
+  --panel: #111430;
+  --raised: #181c3c;
+  --hover: rgb(165 170 255 / 0.06);
+  --foreground: #eef0ff;
+  --ink-2: #b6bade;
+  --ink-3: #868bb3;
+  --ink-4: #5d6187;
+  --hairline: rgb(165 170 255 / 0.1);
+  --hairline-strong: rgb(165 170 255 / 0.18);
+
+  --brand: #635bff;
+  --brand-ink: #a9a4ff;
+  --brand-wash: rgb(99 91 255 / 0.18);
+
+  --st-normal: #3ecf8e;
+  --st-normal-ink: #6fe0ad;
+  --st-review: #f5b948;
+  --st-review-ink: #f7c76c;
+  --st-block: #e5489f;
+  --st-block-ink: #f27cc0;
+  --st-disclosed: #6b8cff;
+  --st-disclosed-ink: #9db2ff;
+  --st-insufficient: #7d82a8;
+  --st-insufficient-ink: #a4a8c8;
+
+  --viz-served: #7a83ff;
+  --viz-blocked: #e5489f;
+  --viz-raise: #e5489f;
+  --viz-lower: #7a83ff;
+  --viz-neutral: #8d92b8;
+  --viz-grid: rgb(165 170 255 / 0.07);
+  --viz-axis: rgb(165 170 255 / 0.18);
+
+  --risk-from: #4a3fd6;
+  --risk-to: #f062b4;
+  --grid-line: rgb(165 170 255 / 0.06);
+  --glow: rgb(99 91 255 / 0.22);
+  --glow-2: rgb(229 72 159 / 0.1);
+  --overlay: rgb(4 5 16 / 0.65);
+  --shadow-pop: 0 16px 48px rgb(2 3 12 / 0.6);
+  --shadow-sheet: 0 0 0 1px var(--hairline), 0 8px 32px rgb(2 3 12 / 0.45);
+}
+
+:root[data-theme="light"] {
+  color-scheme: light;
+  --frame: #eceef8;
+  --background: #ffffff;
+  --panel: #ffffff;
+  --raised: #ffffff;
+  --hover: rgb(10 37 64 / 0.045);
+  --foreground: #0a2540;
+  --ink-2: #3c4f69;
+  --ink-3: #5d6c86;
+  --ink-4: #8792a8;
+  --hairline: rgb(10 37 64 / 0.1);
+  --hairline-strong: rgb(10 37 64 / 0.18);
+
+  --brand: #635bff;
+  --brand-ink: #5248e8;
+  --brand-wash: rgb(99 91 255 / 0.12);
+
+  --st-normal: #1ea672;
+  --st-normal-ink: #0d7a50;
+  --st-review: #e8a020;
+  --st-review-ink: #8a5a00;
+  --st-block: #d6307f;
+  --st-block-ink: #b01f68;
+  --st-disclosed: #4b6cf0;
+  --st-disclosed-ink: #2f4fc9;
+  --st-insufficient: #8792a8;
+  --st-insufficient-ink: #56627a;
+
+  --viz-served: #635bff;
+  --viz-blocked: #d6307f;
+  --viz-raise: #d6307f;
+  --viz-lower: #635bff;
+  --viz-neutral: #6f7b93;
+  --viz-grid: rgb(10 37 64 / 0.07);
+  --viz-axis: rgb(10 37 64 / 0.2);
+
+  --risk-from: #8f88ff;
+  --risk-to: #e0338f;
+  --grid-line: rgb(10 37 64 / 0.05);
+  --glow: rgb(99 91 255 / 0.12);
+  --glow-2: rgb(214 48 127 / 0.06);
+  --overlay: rgb(10 37 64 / 0.35);
+  --shadow-pop: 0 16px 48px rgb(10 37 64 / 0.16);
+  --shadow-sheet: 0 0 0 1px var(--hairline), 0 6px 24px rgb(10 37 64 / 0.06);
+}
+
+@theme inline {
+  --font-sans: "Inter Variable", system-ui, -apple-system, "Segoe UI", sans-serif;
+  --font-mono: "JetBrains Mono Variable", ui-monospace, "SF Mono", Consolas, monospace;
+
+  --color-frame: var(--frame);
+  --color-background: var(--background);
+  --color-foreground: var(--foreground);
+  --color-panel: var(--panel);
+  --color-raised: var(--raised);
+  --color-hover: var(--hover);
+  --color-ink-2: var(--ink-2);
+  --color-ink-3: var(--ink-3);
+  --color-ink-4: var(--ink-4);
+  --color-line: var(--hairline);
+  --color-line-strong: var(--hairline-strong);
+  --color-brand: var(--brand);
+  --color-brand-ink: var(--brand-ink);
+  --color-brand-wash: var(--brand-wash);
+  --color-overlay: var(--overlay);
+
+  --color-st-normal: var(--st-normal);
+  --color-st-normal-ink: var(--st-normal-ink);
+  --color-st-review: var(--st-review);
+  --color-st-review-ink: var(--st-review-ink);
+  --color-st-block: var(--st-block);
+  --color-st-block-ink: var(--st-block-ink);
+  --color-st-disclosed: var(--st-disclosed);
+  --color-st-disclosed-ink: var(--st-disclosed-ink);
+  --color-st-insufficient: var(--st-insufficient);
+  --color-st-insufficient-ink: var(--st-insufficient-ink);
+
+  /* Names that the shadcn components expect. */
+  --color-card: var(--panel);
+  --color-card-foreground: var(--foreground);
+  --color-popover: var(--raised);
+  --color-popover-foreground: var(--foreground);
+  /* Radar's primary action: solid violet with white text. */
+  --color-primary: var(--brand);
+  --color-primary-foreground: #ffffff;
+  --color-secondary: var(--hover);
+  --color-secondary-foreground: var(--foreground);
+  --color-muted: var(--hover);
+  --color-muted-foreground: var(--ink-3);
+  --color-accent: var(--hover);
+  --color-accent-foreground: var(--foreground);
+  --color-destructive: var(--st-block);
+  --color-border: var(--hairline);
+  --color-input: var(--hairline-strong);
+  --color-ring: var(--brand);
+
+  --radius-sm: 4px;
+  --radius-md: 6px;
+  --radius-lg: 8px;
+  --radius-xl: 12px;
+
+  --shadow-pop: var(--shadow-pop);
+  --shadow-sheet: var(--shadow-sheet);
+}
+
+@layer base {
+  * {
+    border-color: var(--hairline);
+  }
+
+  html {
+    font-size: 16px;
+    -webkit-text-size-adjust: 100%;
+  }
+
+  body {
+    margin: 0;
+    background: var(--frame);
+    color: var(--foreground);
+    font-family: var(--font-sans);
+    font-size: 13px;
+    line-height: 1.5;
+    font-optical-sizing: auto;
+    font-feature-settings: "cv11", "ss03";
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+  }
+
+  :focus-visible {
+    outline: 2px solid var(--brand);
+    outline-offset: 2px;
+  }
+
+  ::selection {
+    background: var(--brand-wash);
+  }
+
+  * {
+    scrollbar-width: thin;
+    scrollbar-color: var(--hairline-strong) transparent;
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    *,
+    *::before,
+    *::after {
+      animation-duration: 0.01ms !important;
+      animation-iteration-count: 1 !important;
+      transition-duration: 0.01ms !important;
+      scroll-behavior: auto !important;
+    }
+  }
+}
+
+@layer components {
+  /* Small label for section names inside a panel. */
+  .micro {
+    font-size: 11.5px;
+    font-weight: 500;
+    color: var(--ink-3);
+  }
+
+  /*
+   * The one place that uses Radar's machine voice: monospace capitals for a computed verdict
+   * ("Risk profile" on an account). Keep it to that.
+   */
+  .readout {
+    font-family: var(--font-mono);
+    font-size: 10.5px;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    color: var(--ink-3);
+  }
+
+  /* Display headings: Inter at a large optical size, tight like Linear's page titles. */
+  .display {
+    font-weight: 600;
+    letter-spacing: -0.018em;
+    line-height: 1.18;
+    font-variant-numeric: tabular-nums;
+    text-wrap: balance;
+  }
+
+  /* Faint grid behind the campaign graph canvas and the Live header band. */
+  .grid-canvas {
+    background-image:
+      linear-gradient(var(--grid-line) 1px, transparent 1px),
+      linear-gradient(90deg, var(--grid-line) 1px, transparent 1px);
+    background-size: 32px 32px;
+  }
+
+  /* Radar's night sky: the grid, faded out downward, under a violet glow with a magenta edge. */
+  .radar-band {
+    position: relative;
+    isolation: isolate;
+  }
+  .radar-band::before {
+    content: "";
+    position: absolute;
+    inset: 0;
+    z-index: -1;
+    background-image:
+      linear-gradient(var(--grid-line) 1px, transparent 1px),
+      linear-gradient(90deg, var(--grid-line) 1px, transparent 1px);
+    background-size: 40px 40px;
+    background-position: -1px -1px;
+    mask-image: linear-gradient(to bottom, black 20%, transparent 100%);
+  }
+  .radar-band::after {
+    content: "";
+    position: absolute;
+    inset: 0;
+    z-index: -2;
+    background:
+      radial-gradient(60% 90% at 18% 0%, var(--glow), transparent 70%),
+      radial-gradient(40% 70% at 85% 10%, var(--glow-2), transparent 70%);
+  }
+
+  .risk-fill {
+    background: linear-gradient(90deg, var(--risk-from), var(--risk-to));
+  }
+
+  @keyframes feed-in {
+    from {
+      opacity: 0;
+      transform: translateY(-6px);
+    }
+    to {
+      opacity: 1;
+      transform: none;
+    }
+  }
+
+  .feed-in {
+    animation: feed-in 220ms ease-out;
+  }
+}
