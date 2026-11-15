@@ -76,6 +76,28 @@ def test_blocked_sessions_stop_and_do_not_leak(scenario: Scenario) -> None:
     assert c["leaked"] == len(open_finals)
 
 
+def test_resume_sends_each_request_once(scenario: Scenario) -> None:
+    """The generator resumes a stopped persona with the requests that were not sent (dw.sim.cli.Generator.start)."""
+    hydra = [r for r in scenario.requests if r.persona == "hydra"]
+    lab = FakeLab()
+
+    async def go() -> Counters:
+        counters = Counters()
+        sender = Sender(make_clients("http://lab", httpx.MockTransport(lab)), counters)
+        assert not any(counters.was_sent(r) for r in hydra)
+        await sender.run(hydra[:40], 1e12)                       # the part before the stop
+        assert all(counters.was_sent(r) for r in hydra[:40]) and not any(counters.was_sent(r) for r in hydra[40:])
+        rest = [r for r in hydra if not counters.was_sent(r)]
+        assert rest == hydra[40:]
+        await sender.run(rest, 1e12)                             # the resume
+        return counters
+    counters = asyncio.run(go())
+    assert counters.snapshot()["hydra"]["sent"] == len(hydra) == len(lab.seen)
+    assert all(counters.was_sent(r) for r in hydra)
+    # Best-of-n copies share one body. Each copy is its own request and goes out.
+    assert len({id(r.body) for r in hydra}) < len(hydra)
+
+
 def test_time_order_and_speed(scenario: Scenario) -> None:
     reqs = [r for r in scenario.requests if r.persona == "solo_dev"][:40]
     span = reqs[-1].sim_time - reqs[0].sim_time
