@@ -6,6 +6,7 @@ import math
 from collections import Counter
 from pathlib import Path
 
+from dw.common.config import CFG
 from dw.common.schema import Message
 from dw.watchdog.campaigns import Profile, build_graph, find_campaigns, schema_rarity
 from dw.watchdog.store import EventStore
@@ -52,6 +53,36 @@ def test_campaign_is_found_and_blocks_low_score_members() -> None:
     # The same members keep the same ID in the next run.
     again = find_campaigns(g, profiles, scores, camps, lambda: next(numbers))
     assert list(again) == ["cmp-0001"]
+
+
+
+def _saas_account(i: int) -> Profile:
+    # One product on several accounts: its own tool schema, its own end users' tasks, no shared timing.
+    return Profile(tasks={f"saas{i}-{k}": f"s-{i}-{k}" for k in range(6)},
+                   minutes=Counter({17 * i + 40 * k: 1 for k in range(6)}), schemas={"saas_custom"})
+
+
+def test_a_shared_rare_schema_alone_makes_no_edge() -> None:
+    """Three accounts of one SaaS app share only their tool schema. They are not a campaign."""
+    profiles = _profiles() | {f"saas{i}": _saas_account(i) for i in range(3)}
+    # Many other accounts on the lab, as when the attack personas run: the schema is very rare.
+    profiles.update({f"other{i}": Profile(schemas={"standard_agent"}, minutes=Counter({0: 1})) for i in range(120)})
+    assert schema_rarity(profiles)["saas_custom"] > 3.5
+    # The worst case before this change: every SaaS account just above the candidate threshold.
+    scores = {f"saas{i}": CFG["campaign"]["candidate_threshold"] + 0.01 for i in range(3)}
+    g = build_graph(sorted(scores), profiles, scores)
+    assert g.number_of_edges() == 0
+    assert find_campaigns(g, profiles, scores, {}, lambda: 1) == {}
+
+
+def test_a_shared_rare_schema_still_strengthens_a_real_link() -> None:
+    """Attack accounts that share tasks and timing keep the schema weight on their edge."""
+    profiles = _profiles()
+    scores = {f"atk{i}": 0.9 for i in range(5)}
+    g = build_graph(sorted(scores), profiles, scores)
+    edge = g.edges["atk0", "atk1"]
+    assert edge["types"]["rare_schema"] > 0
+    assert math.isclose(edge["weight"], sum(edge["types"].values()))
 
 
 def test_no_campaign_below_min_size() -> None:

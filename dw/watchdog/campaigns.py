@@ -1,6 +1,7 @@
 """Campaign detection (section B8.5): an account graph of candidate accounts and Louvain communities.
 
-Edges: shared tasks, synchronized activity, and a shared rare tool schema.
+Edges: shared tasks, synchronized activity, and a shared rare tool schema. The schema only adds weight to an edge
+that a shared task or synchronized activity already made.
 A campaign with a score above the block threshold blocks all members, also members below the account threshold.
 """
 from __future__ import annotations
@@ -82,7 +83,10 @@ def _edge(a: Profile, b: Profile, corr: float, schema_rarity: dict[str, float]) 
     if corr > CFG["campaign"]["sync_corr_min"]:
         types["sync"] = w["sync"] * corr
         parts.append(f"per-minute correlation {corr:.2f}")
-    rarity = max((schema_rarity.get(s, 0.0) for s in a.schemas & b.schemas), default=0.0)
+    # A shared rare schema only strengthens a link that a shared task or synchronized activity already made.
+    # Alone it links the accounts of one legitimate product: a SaaS app on several accounts uses its own tool
+    # schema on all of them, and the rarity grows with the number of other accounts on the lab.
+    rarity = max((schema_rarity.get(s, 0.0) for s in a.schemas & b.schemas), default=0.0) if types else 0.0
     if rarity > 0:
         types["rare_schema"] = w["rare_schema"] * rarity
         parts.append(f"shared rare tool schema (rarity {rarity:.1f})")
