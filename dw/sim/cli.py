@@ -2,6 +2,12 @@
 
 The terminal shows live counters and a numbered menu to start and stop personas. With --ui it also serves
 static/panel.html and a small JSON API. With --once it sends the selected personas, prints JSON, and exits.
+
+Start resumes a stopped persona after its last sent request. It never sends a request twice: a replay on the
+same accounts would repeat their contexts, and D1 would block them for the repeat, not for the persona.
+
+The account outcomes (blocked, review, not flagged) come from the watchdog API. The generator matches them to
+its own labels. This is the evaluation view: the watchdog and its dashboard never see the labels.
 """
 from __future__ import annotations
 
@@ -32,7 +38,9 @@ class Generator:
     """Starts and stops personas of one role. The terminal menu and the panel API both use it."""
 
     def __init__(self, role: str, scale: str, speed: float, lab_url: str,
-                 transport: Optional[httpx.AsyncBaseTransport] = None, data_dir: Optional[Path] = None) -> None:
+                 transport: Optional[httpx.AsyncBaseTransport] = None, data_dir: Optional[Path] = None,
+                 watchdog_url: Optional[str] = None,
+                 watchdog_transport: Optional[httpx.AsyncBaseTransport] = None) -> None:
         self.role, self.scale, self.speed = role, scale, speed
         self.personas = ROLE_PERSONAS[role]
         self.counters = Counters()
@@ -44,6 +52,9 @@ class Generator:
         self._scenarios: dict[str, Scenario] = {}
         self._data_dir = data_dir
         self.last_error = ""
+        wd_url = watchdog_url or os.environ.get("WATCHDOG_URL", f"http://127.0.0.1:{CFG['ports']['watchdog']}")
+        self.watchdog = httpx.AsyncClient(base_url=wd_url, transport=watchdog_transport, timeout=5.0)
+        self.outcomes: dict[str, dict[str, int]] = {}    # persona -> {"block", "review", "clear"} account counts
 
     async def scenario(self, scale: str) -> Scenario:
         """The holdout scenario of this role, built once per scale (in a thread, so the server stays live)."""
@@ -70,7 +81,7 @@ class Generator:
             return
         self.scale, self.speed = scale or self.scale, speed or self.speed
         sc = await self.scenario(self.scale)
-        requests = [r for r in sc.requests if r.persona == persona]
+        requests = [r for r in sc.requests if r.persona == persona and not self.counters.was_sent(r)]
         for reg in sc.registrations:
             if sc.labels[reg["account_id"]]["persona"] == persona:
                 (await self.client.post("/admin/accounts", json=reg)).raise_for_status()
@@ -83,6 +94,38 @@ class Generator:
         task = self.tasks.get(persona)
         if task:
             task.cancel()
+
+    def state(self, persona: str) -> str:
+        """idle (never started), running, stopped (can resume), or finished (all requests sent)."""
+        task = self.tasks.get(persona)
+        if task is None:
+            return "idle"
+        if not task.done():
+            return "running"
+        return "stopped" if task.cancelled() else "finished"
+
+    async def poll_outcomes(self) -> None:
+        """Count the accounts of each started persona by watchdog state."""
+        labels = self.labels()
+        if not labels:
+            return
+        try:
+            resp = await self.watchdog.get("/api/accounts", params={"limit": 1_000_000})
+            resp.raise_for_status()
+            states = {a["id"]: a["state"] for a in resp.json()["accounts"]}
+        except (httpx.HTTPError, ValueError, KeyError):
+            return                                     # keep the last counts if the watchdog does not answer
+        out: dict[str, dict[str, int]] = {}
+        for account, lab in labels.items():
+            c = out.setdefault(lab["persona"], {"block": 0, "review": 0, "clear": 0})
+            st = states.get(account)
+            c[st if st in ("block", "review") else "clear"] += 1
+        self.outcomes = out
+
+    async def poll_outcomes_forever(self, every_s: float = 2.0) -> None:
+        while True:
+            await self.poll_outcomes()
+            await asyncio.sleep(every_s)
 
     async def toggle(self, persona: str) -> None:
         """Menu action. A failure shows in the view instead of stopping the generator."""
@@ -114,7 +157,8 @@ class Generator:
         zero = {"sent": 0, "served": 0, "blocked": 0, "leaked": 0, "errors": 0}
         return {"role": self.role, "scale": self.scale, "speed": self.speed, "sim_time": self.sender.sim_time,
                 "error": self.last_error,
-                "personas": {p: {"running": self.running(p), "accounts": self._accounts(p), **snap.get(p, zero)}
+                "personas": {p: {"running": self.running(p), "state": self.state(p), "accounts": self._accounts(p),
+                                 **snap.get(p, zero), "outcome": self.outcomes.get(p)}
                              for p in self.personas}}
 
     async def close(self) -> None:
@@ -123,6 +167,7 @@ class Generator:
         await asyncio.gather(*self.tasks.values(), return_exceptions=True)
         for client in self.clients:
             await client.aclose()
+        await self.watchdog.aclose()
 
 
 # ---------------------------------------------------------------- terminal view
@@ -130,11 +175,14 @@ class Generator:
 def render(gen: Generator) -> RenderableType:
     st = gen.status()
     menu = "  ".join(f"{i} {TITLES[p]}" for i, p in enumerate(gen.personas, 1))
-    rows = [(TITLES[p], "running" if c["running"] else "stopped", c["accounts"], c["sent"], c["served"],
-             c["blocked"], c["leaked"], c["errors"]) for p, c in st["personas"].items()]
+    def outcome(c: dict[str, Any], key: str) -> Any:
+        return c["outcome"][key] if c["outcome"] else "-"
+    rows = [(TITLES[p], c["state"], c["accounts"], outcome(c, "block"), outcome(c, "review"), outcome(c, "clear"),
+             c["sent"], c["served"], c["blocked"], c["leaked"], c["errors"]) for p, c in st["personas"].items()]
     when = datetime.fromtimestamp(st["sim_time"], timezone.utc).strftime("%Y-%m-%d %H:%M") if st["sim_time"] else "-"
     table = term.rows_table(f"sim time {when} UTC  scale {gen.scale}  speed {gen.speed:g}",
-                            ["persona", "state", "accounts", "sent", "served", "blocked", "leaked", "errors"], rows)
+                            ["persona", "state", "accounts", "acct blocked", "acct review", "acct not flagged",
+                             "req sent", "req served", "req refused", "leaked", "errors"], rows)
     return term.panel(f"{gen.role} traffic generator", table,
                       Text(f"Type a number and Enter to start or stop: {menu}   q = quit"),
                       Text(st["error"], style="red"))
@@ -207,7 +255,8 @@ async def run_interactive(gen: Generator, personas: list[str], ui: bool) -> None
     quit_event = asyncio.Event()
     if sys.stdin.isatty():
         threading.Thread(target=_read_menu, args=(gen, asyncio.get_running_loop(), quit_event), daemon=True).start()
-    jobs = [asyncio.create_task(term.run_live(lambda: render(gen)))]
+    jobs = [asyncio.create_task(term.run_live(lambda: render(gen))),
+            asyncio.create_task(gen.poll_outcomes_forever())]
     if ui:
         jobs.append(asyncio.create_task(_serve(gen)))
     try:
