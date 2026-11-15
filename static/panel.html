@@ -46,6 +46,14 @@ function toggle(persona, running) {
                              speed: Number(document.getElementById("speed").value)});
 }
 
+// The leak as a share of the sessions that can leak: "2.5% (12 of 480)". The bare count if the total is unknown.
+function leakText(c) {
+  if (!c.sessions_planned) return c.leaked;
+  const share = 100 * c.leaked / c.sessions_planned;
+  const percent = share > 0 && share < 0.05 ? "<0.1%" : share.toFixed(1) + "%";
+  return percent + " (" + c.leaked + " of " + c.sessions_planned + ")";
+}
+
 function cell(text, cls) {
   const td = document.createElement("td");
   td.textContent = text;
@@ -69,7 +77,7 @@ async function refresh() {
   for (const [name, c] of Object.entries(st.personas)) {
     const tr = document.createElement("tr");
     tr.append(cell(TITLES[name] || name), cell(c.running ? "running" : "stopped", c.running ? "on" : "off"),
-              cell(c.accounts), cell(c.sent), cell(c.served), cell(c.blocked, c.blocked ? "blocked" : ""), cell(c.leaked));
+              cell(c.accounts), cell(c.sent), cell(c.served), cell(c.blocked, c.blocked ? "blocked" : ""), cell(leakText(c)));
     const td = document.createElement("td");
     const btn = document.createElement("button");
     btn.textContent = c.running ? "Stop" : "Start";

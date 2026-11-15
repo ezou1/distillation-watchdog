@@ -330,6 +330,8 @@ export interface PersonaCounters {
   blocked: number;
   /** Complete trajectories received before the accounts were blocked. */
   leaked: number;
+  /** Trajectories that can leak: the denominator of the leak rate. Null until the generator builds the scenario. */
+  sessions_planned?: number | null;
   errors?: number;
 }
 

@@ -29,7 +29,7 @@ from dw.common import term
 from dw.common.config import CFG, ROOT
 from dw.common.react_app import DEFAULT_DIST, mount_react_app
 from dw.sim.personas import ROLE_PERSONAS, TITLES
-from dw.sim.scenario import Scenario, build_scenario
+from dw.sim.scenario import Scenario, build_scenario, planned_sessions
 from dw.sim.sender import Counters, Sender, make_clients
 
 PORTS = {"normal": CFG["ports"]["normal_gen"], "attack": CFG["ports"]["attack_gen"]}
@@ -52,6 +52,7 @@ class Generator:
         self.tasks: dict[str, asyncio.Task[None]] = {}
         self.started: dict[str, str] = {}               # persona -> scale it runs on
         self._scenarios: dict[str, Scenario] = {}
+        self._planned: dict[str, dict[str, int]] = {}   # scale -> persona -> sessions that can leak
         self._data_dir = data_dir
         self.last_error = ""
         wd_url = watchdog_url or os.environ.get("WATCHDOG_URL", f"http://127.0.0.1:{CFG['ports']['watchdog']}")
@@ -64,6 +65,7 @@ class Generator:
             self._scenarios[scale] = await asyncio.to_thread(
                 build_scenario, "holdout", CFG["account"]["holdout_seed"], scale, self.personas,
                 data_dir=self._data_dir)
+            self._planned[scale] = planned_sessions(self._scenarios[scale].requests)
         return self._scenarios[scale]
 
     async def lab_sim_time(self) -> Optional[float]:
@@ -154,12 +156,18 @@ class Generator:
             return int(CFG["sim"]["scales"][self.scale][persona])
         return sum(1 for lab in sc.labels.values() if lab["persona"] == persona)
 
+    def _sessions_planned(self, persona: str) -> Optional[int]:
+        """Sessions of the persona that can leak. None until the scenario of its scale is built."""
+        planned = self._planned.get(self.started.get(persona, self.scale))
+        return None if planned is None else planned.get(persona, 0)
+
     def status(self) -> dict[str, Any]:
         snap = self.counters.snapshot()
         zero = {"sent": 0, "served": 0, "blocked": 0, "leaked": 0, "errors": 0}
         return {"role": self.role, "scale": self.scale, "speed": self.speed, "sim_time": self.sender.sim_time,
                 "error": self.last_error,
                 "personas": {p: {"running": self.running(p), "state": self.state(p), "accounts": self._accounts(p),
+                                 "sessions_planned": self._sessions_planned(p),
                                  **snap.get(p, zero), "outcome": self.outcomes.get(p)}
                              for p in self.personas}}
 
@@ -174,13 +182,23 @@ class Generator:
 
 # ---------------------------------------------------------------- terminal view
 
+def leak_text(leaked: int, planned: Optional[int]) -> str:
+    """The leak as a share of the sessions that can leak: "2.5% (12 of 480)". The bare count if the total is unknown."""
+    if not planned:
+        return str(leaked)
+    share = 100 * leaked / planned
+    percent = "<0.1%" if 0 < share < 0.05 else f"{share:.1f}%"
+    return f"{percent} ({leaked} of {planned})"
+
+
 def render(gen: Generator) -> RenderableType:
     st = gen.status()
     menu = "  ".join(f"{i} {TITLES[p]}" for i, p in enumerate(gen.personas, 1))
     def outcome(c: dict[str, Any], key: str) -> Any:
         return c["outcome"][key] if c["outcome"] else "-"
     rows = [(TITLES[p], c["state"], c["accounts"], outcome(c, "block"), outcome(c, "review"), outcome(c, "clear"),
-             c["sent"], c["served"], c["blocked"], c["leaked"], c["errors"]) for p, c in st["personas"].items()]
+             c["sent"], c["served"], c["blocked"], leak_text(c["leaked"], c["sessions_planned"]), c["errors"])
+            for p, c in st["personas"].items()]
     when = datetime.fromtimestamp(st["sim_time"], timezone.utc).strftime("%Y-%m-%d %H:%M") if st["sim_time"] else "-"
     table = term.rows_table(f"sim time {when} UTC  scale {gen.scale}  speed {gen.speed:g}",
                             ["persona", "state", "accounts", "acct blocked", "acct review", "acct not flagged",

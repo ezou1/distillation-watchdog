@@ -44,6 +44,20 @@ class Scenario:
     registrations: list[dict]                # bodies for POST /admin/accounts
 
 
+def planned_sessions(requests: Iterable[SimRequest]) -> dict[str, int]:
+    """Per persona: the sessions that end at a model stop. These are the sessions that can leak.
+
+    This is the denominator of the leak rate. A session whose last step is a tool call has no final request,
+    so the sender never counts it as leaked and it is not counted here either. Copies of a final step
+    (best-of-n, retries) count once, as in dw.sim.sender.Counters.
+    """
+    refs: dict[str, set[str]] = defaultdict(set)
+    for r in requests:
+        if r.final:
+            refs[r.persona].add(r.session_ref)
+    return {persona: len(sessions) for persona, sessions in refs.items()}
+
+
 # ---------------------------------------------------------------- input files
 
 @dataclass
