@@ -61,7 +61,8 @@ The addresses:
 
 | Address | What it is |
 |---|---|
-| http://127.0.0.1:8010 | Dashboard: Live, Account, Campaigns, Evaluation |
+| http://127.0.0.1:8010/app/ | Baker Street: the dashboard as an evidence board (needs the front-end build, see section 3) |
+| http://127.0.0.1:8010 | The plain-HTML dashboard: Live, Account, Campaigns, Evaluation. It works without the build. |
 | http://127.0.0.1:8001 | Normal traffic generator (start and stop personas) |
 | http://127.0.0.1:8002 | Attack traffic generator |
 | http://127.0.0.1:8003 | Agent chat (needs `OPENROUTER_API_KEY`) |
@@ -96,6 +97,12 @@ generators (8001, 8002), agent chat (8003) ──► lab gateway (8000) ──�
 - **Worker** (`dw/watchdog/worker.py`): ingests events, updates the detectors, scores the accounts, and records snapshots.
 - **Simulation** (`dw/sim/`): the personas (`personas.py`) and the scenario builder (`scenario.py`). The CLI (`cli.py`) replays the holdout split. The offline replay (`offline.py`) runs the watchdog in the same process, without ports.
 - **Front end**: `static/dashboard.{html,js,css}` (served by `dw/watchdog/server.py`), `static/panel.html` (generators), `static/agent.html` (agent chat). The API is in `docs/API.md`.
+- **React app** (`frontend/`, served at `/app` on each server). `frontend/dist` is not in git: build it after each pull.
+  - Build: `cd frontend && npm install && npm run build`. If `npm run build` stops with "tsc: Permission denied", use `node node_modules/typescript/bin/tsc --noEmit && node node_modules/vite/bin/vite.js build`.
+  - If `/app/` gives 404, the servers started before the build was there: run `scripts/stop.sh`, then `scripts/demo.sh`.
+  - On the watchdog (8010) the app is **Baker Street**: a pinboard with the request-rate chart, five postcards (Recent activity, Accounts list, Suspicious messages, Active metrics, Agent graph), and the Evaluation folder. The code is in `frontend/src/baker/`, and all its styles are in `baker.css` below the class `html.baker`. `docs/BAKER_STREET_PROMPT.md` is the specification; screenshots are in `docs/baker-street/`.
+  - On the generators (8001, 8002) and the agent chat (8003) the app keeps the earlier look. They share `App.tsx`, `index.css`, and some components with the dashboard: do not restyle shared code. A change to Baker Street must leave those pages the same.
+  - The chart keeps its history in the browser (`localStorage`), because the watchdog keeps only 4 simulated hours. Suspicious messages reads the evidence of at most 20 blocked and 20 suspicious accounts.
 
 ## 4. Rules for code changes
 

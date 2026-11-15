@@ -1,6 +1,6 @@
 import type { Contribution } from "@/api";
 import { formatSigned } from "@/lib/format";
-import { detectorMeta } from "@/lib/states";
+import { detectorMeta, featureWords } from "@/lib/states";
 
 const MAX_ROWS = 10;
 
@@ -33,10 +33,10 @@ export function ContributionBars({ contributions }: { contributions: Contributio
           return (
             <li
               key={row.name}
-              title={detector.signal ? `${detector.code} ${detector.name}: ${detector.signal}` : row.name}
-              className="grid grid-cols-[minmax(0,14rem)_minmax(4rem,1fr)_3.25rem] items-center gap-3"
+              title={detector.signal ? `${row.name}. ${detector.name}: ${detector.signal}` : row.name}
+              className="grid grid-cols-[minmax(0,22rem)_minmax(4rem,1fr)_3.25rem] items-center gap-3"
             >
-              <span className="truncate font-mono text-[11.5px] text-ink-2">{row.name}</span>
+              <span className="truncate text-[12px] text-ink-2">{featureWords(row.name)}</span>
               <span className="relative h-3.5">
                 <span className="absolute inset-y-0 left-1/2 w-px bg-(--viz-axis)" aria-hidden="true" />
                 <span

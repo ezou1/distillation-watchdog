@@ -118,7 +118,7 @@ The build uses no `:free` model routes on OpenRouter. The build keeps all LLM ca
 ## Demo
 
 1. Run `scripts/demo.sh`. Attach with `tmux attach -t dw`. The session has five panes: lab, watchdog, agent chat, normal generator, attack generator.
-2. Open the dashboard at `http://127.0.0.1:8010`. Open the agent chat at `http://127.0.0.1:8003`.
+2. Open the dashboard at `http://127.0.0.1:8010/app/` (Baker Street, the evidence board; build it first, see `docs/TEAM_HANDOFF.md` section 3) or at `http://127.0.0.1:8010` (the plain-HTML dashboard). Open the agent chat at `http://127.0.0.1:8003`.
 3. In the normal generator pane (or at `http://127.0.0.1:8001`), start Solo developers, SaaS app, and Benchmark runner. The dashboard stays mostly green. SaaS and Benchmark show some flags but no blocks.
 4. In the agent chat, ask the agent to write a small function and its test in the sandbox. Approve the test run. The "you" account stays normal on the dashboard.
 5. In the attack generator pane (or at `http://127.0.0.1:8002`), start Hydra. The account scores increase. A campaign forms in the graph. Blocks start. The attack pane shows 403 responses, and the leaked-trajectory count stops for the blocked accounts. At the demo speed, the Hydra scenario ends in a short time.

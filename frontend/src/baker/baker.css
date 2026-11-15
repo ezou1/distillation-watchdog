@@ -1,0 +1,1893 @@
+@import "@fontsource/eb-garamond/400.css";
+@import "@fontsource/eb-garamond/400-italic.css";
+@import "@fontsource/eb-garamond/600.css";
+@import "@fontsource/courier-prime/400.css";
+@import "@fontsource/courier-prime/700.css";
+
+/*
+ * Baker Street: the look of the watchdog dashboard only.
+ *
+ * Every rule here applies below `html.baker`. The dashboard shell sets that class while it is on the page;
+ * the traffic generator pages and the agent chat page never set it, so they keep their look.
+ *
+ * Colors. Four base colors and three signal colors, plus shades of them. No other hue.
+ *   base:   oak brown (wood), beige (cork, aged paper), off-white (paper), dark ink (text);
+ *           a reddish brown is the accent for links and the selected control
+ *   signal: red (blocked, and all string), yellow (suspicious), gray (OK)
+ * Fonts. EB Garamond (a soft old book type, with clear numerals) for titles and text, Courier Prime for
+ *        data, labels and numbers. Titles are large and of normal weight, not bold.
+ * Sizes. Four: 13, 16, 24 and 38 px.
+ * Paper is one flat color. Only the wood and the cork have a texture.
+ */
+:root.baker.baker {
+  color-scheme: light;
+
+  --bk-brown: #6e2f1e;
+  --bk-brown-deep: #47190f;
+  --bk-brown-light: #8a4630;
+  --bk-beige: #d6bf9a;
+  --bk-beige-deep: #bfa274;
+  --bk-beige-light: #e6d6b8;
+  --bk-paper: #f6f0e1;
+  --bk-paper-shade: #ece3cd;
+  --bk-ink: #2a211b;
+  --bk-ink-2: #4b4037;
+  --bk-ink-3: #6f6257;
+  --bk-rule: rgb(42 33 27 / 0.16);
+  --bk-rule-strong: rgb(42 33 27 / 0.34);
+
+  --bk-red: #a5231c;
+  --bk-red-deep: #7d1712;
+  --bk-red-light: #cf5a4e;
+  --bk-yellow: #d2a12a;
+  --bk-yellow-deep: #7a5a08;
+  --bk-gray: #8d877d;
+  --bk-gray-deep: #57524b;
+
+  --bk-serif: "EB Garamond", "Iowan Old Style", Georgia, serif;
+  --bk-type: "Courier Prime", "Courier New", Courier, monospace;
+  --bk-xs: 13px;
+  --bk-sm: 17px;
+  --bk-md: 24px;
+  --bk-lg: 38px;
+
+  --bk-oak: #b78d58;
+  --bk-oak-deep: #8a6638;
+  --bk-oak-light: #cba673;
+  /* The wood grain. A small local picture, so the browser draws it one time (a filter here slows the zoom). */
+  --bk-grain: url("./oak.jpg");
+
+  --bk-shadow: 0 1px 1px rgb(42 33 27 / 0.3), 0 6px 14px rgb(42 33 27 / 0.28);
+  --bk-shadow-lift: 0 2px 2px rgb(42 33 27 / 0.3), 0 14px 26px rgb(42 33 27 / 0.36);
+
+  /*
+   * The tokens of the shared components (account view, evidence dialog, case file, evaluation), set to the
+   * same colors. This is how those components get the theme without a change to their code. They apply
+   * with the light and with the dark setting of the other sites: Baker Street has one look.
+   */
+  --frame: var(--bk-beige);
+  --background: var(--bk-paper);
+  --panel: var(--bk-paper);
+  --raised: var(--bk-paper);
+  --hover: rgb(42 33 27 / 0.07);
+  --foreground: var(--bk-ink);
+  --ink-2: var(--bk-ink-2);
+  --ink-3: var(--bk-ink-3);
+  --ink-4: var(--bk-ink-3);
+  --hairline: var(--bk-rule);
+  --hairline-strong: var(--bk-rule-strong);
+  --brand: var(--bk-brown);
+  --brand-ink: var(--bk-brown);
+  --brand-wash: rgb(110 47 30 / 0.16);
+  --st-normal: var(--bk-gray);
+  --st-normal-ink: var(--bk-gray-deep);
+  --st-review: var(--bk-yellow);
+  --st-review-ink: var(--bk-yellow-deep);
+  --st-block: var(--bk-red);
+  --st-block-ink: var(--bk-red-deep);
+  --st-disclosed: var(--bk-gray);
+  --st-disclosed-ink: var(--bk-gray-deep);
+  --st-insufficient: var(--bk-gray);
+  --st-insufficient-ink: var(--bk-gray-deep);
+  --viz-served: var(--bk-ink-2);
+  --viz-blocked: var(--bk-red);
+  --viz-raise: var(--bk-red);
+  --viz-lower: var(--bk-gray);
+  --viz-neutral: var(--bk-gray);
+  --viz-grid: var(--bk-rule);
+  --viz-axis: var(--bk-rule-strong);
+  /* One color for the score bar: a second color in a gradient is not necessary. */
+  --risk-from: var(--bk-ink-2);
+  --risk-to: var(--bk-ink-2);
+  --grid-line: transparent;
+  --glow: transparent;
+  --glow-2: transparent;
+  --overlay: rgb(42 33 27 / 0.6);
+  --shadow-pop: var(--bk-shadow-lift);
+  --shadow-sheet: var(--bk-shadow);
+}
+
+/* ---------- base ---------- */
+
+html.baker body {
+  background: var(--bk-oak-deep);
+  color: var(--bk-ink);
+  font-family: var(--bk-serif);
+  font-size: var(--bk-sm);
+  line-height: 1.5;
+  font-feature-settings: normal;
+}
+
+/* Paper has square corners. */
+html.baker *,
+html.baker *::before,
+html.baker *::after {
+  border-radius: 0 !important;
+}
+
+html.baker .font-mono,
+html.baker code,
+html.baker kbd,
+html.baker pre,
+html.baker .readout {
+  font-family: var(--bk-type);
+}
+
+html.baker .text-primary-foreground {
+  color: var(--bk-paper);
+}
+
+html.baker :focus-visible {
+  outline: 2px solid var(--bk-ink);
+  outline-offset: 2px;
+}
+
+html.baker ::selection {
+  background: rgb(210 161 42 / 0.45);
+}
+
+html.baker * {
+  scrollbar-color: var(--bk-ink-3) transparent;
+}
+
+/* Shared components use small sizes. Inside Baker Street they are enlarged so the text is 15 px. */
+html.baker .bk-reuse,
+html.baker [role="dialog"] {
+  zoom: 1.14;
+}
+html.baker .bk-reuse .bk-reuse {
+  zoom: 1;
+}
+/* The enlarged dialog must still fit the window. */
+html.baker [role="dialog"] {
+  max-height: 77dvh !important;
+}
+
+html.baker .bk-typed {
+  font-family: var(--bk-type);
+}
+html.baker .bk-big {
+  font-size: var(--bk-md);
+}
+html.baker .bk-num {
+  text-align: right;
+  font-family: var(--bk-type);
+  font-variant-numeric: tabular-nums;
+}
+html.baker .bk-red-text {
+  color: var(--bk-red-deep);
+}
+html.baker .bk-fill {
+  width: 100%;
+  height: 100%;
+}
+
+/* ---------- stamp, swatch, pin ---------- */
+
+html.baker .bk-stamp {
+  display: inline-block;
+  padding: 2px 6px 0;
+  border: 1.5px solid;
+  font-family: var(--bk-type);
+  font-size: var(--bk-xs);
+  font-weight: 700;
+  line-height: 1.3;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  white-space: nowrap;
+  transform: rotate(-1.5deg);
+}
+html.baker .bk-stamp--red {
+  color: var(--bk-red-deep);
+  border-color: var(--bk-red);
+}
+html.baker .bk-stamp--yellow {
+  color: var(--bk-ink);
+  background: var(--bk-yellow);
+  border-color: var(--bk-yellow-deep);
+}
+html.baker .bk-stamp--gray {
+  color: var(--bk-gray-deep);
+  border-color: var(--bk-gray);
+}
+
+html.baker .bk-swatch {
+  display: inline-block;
+  width: 11px;
+  height: 11px;
+  border: 1px solid var(--bk-ink);
+  vertical-align: -1px;
+}
+html.baker .bk-swatch--red {
+  background: var(--bk-red);
+}
+html.baker .bk-swatch--yellow {
+  background: var(--bk-yellow);
+}
+html.baker .bk-swatch--gray {
+  background: var(--bk-gray);
+}
+
+html.baker .bk-pin {
+  width: 22px;
+  height: 22px;
+}
+
+/* ---------- the board ---------- */
+
+html.baker .bk-root {
+  position: fixed;
+  inset: 0;
+  overflow: hidden;
+  /* The desk under the board and under each display. Oak planks: the grain, and a thin dark seam between planks. */
+  background:
+    repeating-linear-gradient(180deg, rgb(74 52 24 / 0.5) 0 2px, transparent 2px 210px),
+    var(--bk-oak) var(--bk-grain);
+}
+
+/* The wooden frame. */
+html.baker .bk-board {
+  position: absolute;
+  inset: 0;
+  padding: 14px;
+  background: var(--bk-oak) var(--bk-grain);
+  transition:
+    transform 440ms cubic-bezier(0.3, 0, 0.15, 1),
+    opacity 300ms ease;
+  will-change: transform, opacity;
+}
+html.baker .bk-board[data-away] {
+  opacity: 0;
+  transform: scale(1.05);
+  pointer-events: none;
+}
+
+/* The cork: a small local picture of its grain. */
+html.baker .bk-board__cork {
+  position: relative;
+  width: 100%;
+  height: 100%;
+  overflow: hidden;
+  background: var(--bk-beige) url("./cork.jpg");
+  /*
+   * The board is a size container, and the four text sizes on it follow its width and height. So the
+   * postcards keep the same proportions in a small window and in a large one, and no text is cut.
+   */
+  container-type: size;
+  --bk-xs: clamp(10.5px, min(0.92cqw, 1.47cqh), 14px);
+  --bk-sm: clamp(12.5px, min(1.15cqw, 1.85cqh), 18px);
+  --bk-md: clamp(16px, min(1.7cqw, 2.72cqh), 26px);
+  --bk-lg: clamp(22px, min(2.7cqw, 4.3cqh), 40px);
+  box-shadow:
+    inset 0 0 0 2px var(--bk-oak-deep),
+    inset 0 8px 22px rgb(42 33 27 / 0.45);
+}
+
+/* The name of the board: ink on the cork, no box. */
+html.baker .bk-plate {
+  position: absolute;
+  z-index: 6;
+  top: 1.6%;
+  left: 50%;
+  transform: translateX(-50%);
+  margin: 0;
+  font-size: var(--bk-lg);
+  font-weight: 400;
+  line-height: 1.1;
+  white-space: nowrap;
+  color: var(--bk-ink);
+}
+
+/* The chart sheet sits above the strings, so a string that crosses the middle goes behind the paper. */
+html.baker .bk-center {
+  position: absolute;
+  z-index: 5;
+  left: 25.5%;
+  top: 18.5%;
+  width: 49%;
+  height: 52%;
+  transform: rotate(-0.4deg);
+}
+html.baker .bk-sheet {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  width: 100%;
+  height: 100%;
+  padding: 16px 20px 10px;
+  background: var(--bk-paper);
+  box-shadow: var(--bk-shadow);
+}
+html.baker .bk-sheet__pin {
+  position: absolute;
+  top: -6px;
+}
+html.baker .bk-sheet__head {
+  display: flex;
+  align-items: flex-end;
+  justify-content: space-between;
+  gap: 16px;
+  padding-bottom: 8px;
+  border-bottom: 3px double var(--bk-rule-strong);
+}
+html.baker .bk-sheet__head h2 {
+  margin: 0;
+  font-size: var(--bk-md);
+  font-weight: 400;
+  line-height: 1.2;
+}
+html.baker .bk-sheet__head p,
+html.baker .bk-sheet__foot {
+  margin: 0;
+  font-family: var(--bk-type);
+  font-size: var(--bk-xs);
+  color: var(--bk-ink-2);
+}
+html.baker .bk-sheet__plot {
+  flex: 1;
+  min-height: 0;
+  padding-top: 8px;
+}
+html.baker .bk-sheet__foot {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: space-between;
+  gap: 4px 16px;
+  padding-top: 4px;
+}
+html.baker .bk-sheet__foot ul {
+  display: flex;
+  gap: 14px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+html.baker .bk-sheet__foot li {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+html.baker .bk-windows,
+html.baker .bk-tabs {
+  display: flex;
+  flex-wrap: wrap;
+}
+html.baker .bk-windows button,
+html.baker .bk-tabs button {
+  margin-left: -1px;
+  padding: 3px 10px 1px;
+  font-family: var(--bk-type);
+  font-size: var(--bk-xs);
+  font-weight: 700;
+  color: var(--bk-ink-2);
+  background: transparent;
+  border: 1px solid var(--bk-rule-strong);
+  cursor: pointer;
+  transition: background-color 150ms;
+}
+html.baker .bk-windows button:hover,
+html.baker .bk-tabs button:hover {
+  background: var(--hover);
+}
+html.baker .bk-windows button[aria-pressed="true"],
+html.baker .bk-tabs button[aria-pressed="true"] {
+  color: var(--bk-paper);
+  background: var(--bk-brown);
+  border-color: var(--bk-brown-deep);
+}
+html.baker .bk-tabs button span {
+  margin-left: 6px;
+  font-weight: 400;
+  opacity: 0.8;
+}
+
+html.baker .bk-tip {
+  padding: 6px 10px;
+  font-family: var(--bk-type);
+  font-size: var(--bk-xs);
+  background: var(--bk-paper);
+  border: 1px solid var(--bk-rule-strong);
+  box-shadow: var(--bk-shadow);
+}
+html.baker .bk-tip__row {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+html.baker .bk-tip__row b {
+  margin-left: auto;
+  padding-left: 16px;
+}
+
+/* The strings: above the postcards, below the chart sheet and the name plate. */
+html.baker .bk-strings {
+  position: absolute;
+  z-index: 4;
+  inset: 0;
+  pointer-events: none;
+}
+
+/* ---------- postcards ---------- */
+
+html.baker .bk-card {
+  --rot: 0deg;
+  position: absolute;
+  z-index: 3;
+  display: flex;
+  flex-direction: column;
+  /* The lower strip is kept free for the "i" button and the corner mark. */
+  padding: calc(var(--bk-md) * 1.05) calc(var(--bk-sm) * 1.15) calc(var(--bk-xs) * 2.9);
+  color: var(--bk-ink);
+  text-decoration: none;
+  background: var(--bk-paper);
+  box-shadow: var(--bk-shadow);
+  transform: rotate(var(--rot));
+  transition:
+    transform 180ms ease-out,
+    box-shadow 180ms ease-out;
+}
+/* The printed border of a postcard. */
+html.baker .bk-card::before {
+  content: "";
+  position: absolute;
+  inset: 6px;
+  border: 1px solid var(--bk-rule-strong);
+  pointer-events: none;
+}
+html.baker .bk-card:hover,
+html.baker .bk-card:focus-visible {
+  transform: rotate(var(--rot)) translateY(-4px) scale(1.015);
+  box-shadow: var(--bk-shadow-lift);
+}
+html.baker .bk-card h2 {
+  margin: 0 0 0.3em;
+  padding-bottom: 0.2em;
+  font-size: var(--bk-md);
+  font-weight: 400;
+  line-height: 1.2;
+  border-bottom: 1px solid var(--bk-rule-strong);
+}
+html.baker .bk-card__body {
+  flex: 1;
+  min-height: 0;
+  overflow: hidden;
+  font-family: var(--bk-type);
+  font-size: var(--bk-xs);
+  line-height: 1.45;
+}
+html.baker .bk-card__body p {
+  margin: 0;
+}
+/* Two pins hold a postcard. The classes below put them in two corners. */
+html.baker .bk-card__pin {
+  position: absolute;
+  z-index: 1;
+}
+html.baker .bk-pins-right .bk-card__pin {
+  right: 2px;
+}
+html.baker .bk-pins-left .bk-card__pin {
+  left: 2px;
+}
+html.baker .bk-pins-right .bk-card__pin--a,
+html.baker .bk-pins-left .bk-card__pin--a,
+html.baker .bk-pins-top .bk-card__pin {
+  top: -4px;
+}
+html.baker .bk-pins-right .bk-card__pin--b,
+html.baker .bk-pins-left .bk-card__pin--b {
+  bottom: -2px;
+}
+html.baker .bk-pins-top .bk-card__pin--a {
+  left: 3px;
+}
+html.baker .bk-pins-top .bk-card__pin--b {
+  right: 3px;
+}
+/* The mark in the corner, like the frank of a postcard. */
+html.baker .bk-card__frank {
+  position: absolute;
+  right: calc(var(--bk-xs) * 1.9);
+  bottom: calc(var(--bk-xs) * 0.75);
+  line-height: 1.35;
+  padding: 1px 5px 0;
+  font-family: var(--bk-type);
+  font-size: var(--bk-xs);
+  color: var(--bk-ink-3);
+  border: 1px dashed var(--bk-ink-3);
+  transform: rotate(-4deg);
+}
+
+/* Five places around the chart, each a little off. The order around the board is 1, 4, 2, 3, 5. */
+html.baker .bk-card--activity {
+  --rot: -1.8deg;
+  left: 3%;
+  top: 9.5%;
+  width: 19.5%;
+  height: 31%;
+}
+html.baker .bk-card--metrics {
+  --rot: 1.5deg;
+  left: 77.8%;
+  top: 7.5%;
+  width: 19.2%;
+  height: 32%;
+}
+html.baker .bk-card--accounts {
+  --rot: -1.2deg;
+  left: 77.3%;
+  top: 50.5%;
+  width: 19.7%;
+  height: 31%;
+}
+html.baker .bk-card--messages {
+  --rot: 0.9deg;
+  left: 39.5%;
+  top: 74.5%;
+  width: 23%;
+  height: 22.5%;
+}
+html.baker .bk-card--graph {
+  --rot: 1.6deg;
+  left: 3.6%;
+  top: 49%;
+  width: 19%;
+  height: 32%;
+}
+
+html.baker .bk-lines,
+html.baker .bk-tally {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+html.baker .bk-lines li {
+  overflow: hidden;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+}
+html.baker .bk-lines li::before {
+  content: "– ";
+}
+html.baker .bk-tally li {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 1px 0;
+  line-height: 1.25;
+}
+html.baker .bk-tally b,
+html.baker .bk-figures dd {
+  font-size: var(--bk-md);
+  font-variant-numeric: tabular-nums;
+}
+html.baker .bk-figures {
+  margin: 0;
+}
+html.baker .bk-figures div {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 8px;
+  border-bottom: 1px dotted var(--bk-rule-strong);
+}
+html.baker .bk-figures dd {
+  margin: 0;
+  font-weight: 700;
+}
+html.baker .bk-card__graph {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+}
+html.baker .bk-minigraph {
+  flex: 1;
+  min-height: 0;
+  width: 100%;
+}
+
+/* ---------- props on the board ---------- */
+
+html.baker .bk-folder-prop {
+  position: absolute;
+  z-index: 3;
+  left: 65.5%;
+  top: 84%;
+  width: 9.6%;
+  height: 12.5%;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  padding: 8px 10px;
+  color: var(--bk-ink);
+  text-decoration: none;
+  background: var(--bk-beige-light);
+  border: 1px solid var(--bk-rule-strong);
+  box-shadow: var(--bk-shadow);
+  transform: rotate(-3deg);
+  transition:
+    transform 180ms ease-out,
+    box-shadow 180ms ease-out;
+}
+html.baker .bk-folder-prop:hover,
+html.baker .bk-folder-prop:focus-visible {
+  transform: rotate(-3deg) translateY(-4px);
+  box-shadow: var(--bk-shadow-lift);
+}
+html.baker .bk-folder-prop__tab {
+  position: absolute;
+  left: -1px;
+  top: -13px;
+  width: 46%;
+  height: 13px;
+  background: var(--bk-beige-light);
+  border: 1px solid var(--bk-rule-strong);
+  border-bottom: 0;
+}
+html.baker .bk-folder-prop__label {
+  font-size: var(--bk-sm);
+  font-weight: 400;
+  line-height: 1.2;
+}
+html.baker .bk-folder-prop__note {
+  font-family: var(--bk-type);
+  font-size: var(--bk-xs);
+  color: var(--bk-ink-2);
+}
+
+html.baker .bk-tags {
+  position: absolute;
+  z-index: 3;
+  left: 25.5%;
+  top: 83%;
+  width: 12.5%;
+  height: 14.5%;
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+}
+html.baker .bk-tag {
+  position: relative;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 4px 10px 3px 22px;
+  font-family: var(--bk-type);
+  font-size: var(--bk-xs);
+  font-weight: 700;
+  line-height: 1.2;
+  color: var(--bk-ink);
+  text-decoration: none;
+  background: var(--bk-beige-light);
+  border: 1px solid var(--bk-rule-strong);
+  box-shadow: var(--bk-shadow);
+  /* The cut corners of a luggage tag. */
+  clip-path: polygon(10px 0, 100% 0, 100% 100%, 10px 100%, 0 50%);
+  transition: transform 180ms ease-out;
+}
+html.baker .bk-tag:nth-child(1) {
+  transform: rotate(-2deg);
+}
+html.baker .bk-tag:nth-child(2) {
+  transform: rotate(1.5deg);
+  margin-left: 8%;
+}
+html.baker .bk-tag:nth-child(3) {
+  transform: rotate(-1deg);
+}
+html.baker .bk-tag:hover,
+html.baker .bk-tag:focus-visible {
+  transform: translateX(5px);
+  background: var(--bk-paper);
+}
+html.baker .bk-tag__hole {
+  position: absolute;
+  left: 9px;
+  width: 6px;
+  height: 6px;
+  background: var(--bk-brown-deep);
+  clip-path: circle(50%);
+}
+
+html.baker .bk-status {
+  position: absolute;
+  z-index: 3;
+  left: 4%;
+  top: 87%;
+  margin: 0;
+  padding: 5px 12px 3px;
+  font-family: var(--bk-type);
+  font-size: var(--bk-xs);
+  line-height: 1.35;
+  background: var(--bk-paper);
+  box-shadow: var(--bk-shadow);
+  transform: rotate(-1deg);
+}
+html.baker .bk-status b {
+  display: block;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+}
+html.baker .bk-status[data-online="false"] b {
+  color: var(--bk-red-deep);
+}
+
+html.baker .bk-search {
+  position: absolute;
+  z-index: 3;
+  left: 82%;
+  top: 88%;
+  padding: 6px 14px 4px;
+  font-family: var(--bk-type);
+  font-size: var(--bk-xs);
+  font-weight: 700;
+  color: var(--bk-ink);
+  background: var(--bk-paper);
+  border: 0;
+  box-shadow: var(--bk-shadow);
+  transform: rotate(1.2deg);
+  cursor: pointer;
+  transition: transform 180ms ease-out;
+}
+html.baker .bk-search:hover,
+html.baker .bk-search:focus-visible {
+  transform: rotate(1.2deg) translateY(-3px);
+}
+html.baker .bk-search kbd {
+  margin-left: 8px;
+  font-weight: 400;
+  color: var(--bk-ink-3);
+}
+
+/* ---------- a display (the zoomed view) ---------- */
+
+/* The desk. */
+html.baker .bk-layer {
+  position: absolute;
+  z-index: 20;
+  inset: 0;
+  overflow: auto;
+  transform-origin: 0 0;
+  will-change: transform, opacity;
+  color: var(--bk-ink);
+  /* No background here: the desk is on .bk-root, which does not move, so the zoom stays cheap. */
+}
+html.baker .bk-display {
+  max-width: 1560px;
+  margin: 0 auto;
+  padding: 18px 28px 48px;
+}
+html.baker .bk-display__head {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-start;
+  gap: 12px 18px;
+  margin-bottom: 20px;
+}
+/* The title of a display is on a paper label, never on the bare wood. */
+html.baker .bk-display__title {
+  flex: 0 1 auto;
+  min-width: 240px;
+  margin-right: auto;
+  padding: 10px 22px 10px 30px;
+  background: var(--bk-paper);
+  box-shadow: var(--bk-shadow);
+  transform: rotate(-0.3deg);
+}
+html.baker .bk-display__title h1 {
+  margin: 0;
+  font-size: var(--bk-lg);
+  font-weight: 400;
+  line-height: 1.15;
+}
+html.baker .bk-display__title p {
+  margin: 4px 0 0;
+  max-width: 90ch;
+  font-size: var(--bk-sm);
+  color: var(--bk-ink-2);
+}
+html.baker .bk-display__actions {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 12px;
+  padding-top: 6px;
+}
+html.baker .bk-display__actions .bk-pager {
+  padding: 4px 4px 4px 12px;
+  background: var(--bk-paper);
+  box-shadow: var(--bk-shadow);
+}
+
+html.baker .bk-back,
+html.baker .bk-button,
+html.baker .bk-pager button {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 7px 14px 5px;
+  font-family: var(--bk-type);
+  font-size: var(--bk-sm);
+  font-weight: 700;
+  line-height: 1.2;
+  color: var(--bk-ink);
+  text-decoration: none;
+  background: var(--bk-paper);
+  border: 1px solid var(--bk-ink-3);
+  box-shadow: var(--bk-shadow);
+  cursor: pointer;
+  transition:
+    transform 150ms ease-out,
+    background-color 150ms;
+}
+html.baker .bk-back {
+  margin-top: 6px;
+}
+html.baker .bk-back:hover,
+html.baker .bk-button:hover,
+html.baker .bk-pager button:hover:not(:disabled) {
+  background: var(--bk-beige-light);
+  transform: translateY(-1px);
+}
+html.baker .bk-pager button:disabled {
+  opacity: 0.5;
+  cursor: default;
+}
+html.baker .bk-pager {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-family: var(--bk-type);
+  font-size: var(--bk-xs);
+}
+html.baker .bk-textbutton {
+  padding: 0;
+  font-size: var(--bk-sm);
+  color: var(--bk-brown);
+  text-decoration: underline;
+  background: none;
+  border: 0;
+  cursor: pointer;
+}
+
+/* A sheet of paper on the desk. */
+html.baker .bk-paper {
+  position: relative;
+  padding: 18px 22px;
+  background: var(--bk-paper);
+  box-shadow: var(--bk-shadow);
+}
+html.baker .bk-paper a,
+html.baker .bk-telegram b {
+  color: var(--bk-brown);
+}
+html.baker .bk-note {
+  margin: 0;
+  padding: 18px 22px;
+  max-width: 70ch;
+  font-family: var(--bk-type);
+  font-size: var(--bk-sm);
+  color: var(--bk-ink-2);
+  background: var(--bk-paper);
+  box-shadow: var(--bk-shadow);
+}
+html.baker .bk-paper .bk-note,
+html.baker .bk-sheet .bk-note,
+html.baker .bk-photo .bk-note {
+  padding: 8px 0;
+  background: none;
+  box-shadow: none;
+}
+html.baker .bk-caption {
+  margin: 0 0 14px;
+  max-width: 110ch;
+  font-family: var(--bk-type);
+  font-size: var(--bk-xs);
+  color: var(--bk-ink-2);
+}
+/* Text that stands alone on the desk gets a paper strip. */
+html.baker .bk-display__body > .bk-caption {
+  width: fit-content;
+  padding: 8px 14px 6px;
+  background: var(--bk-paper);
+  box-shadow: var(--bk-shadow);
+}
+html.baker .bk-heading {
+  margin: 0 0 10px;
+  font-size: var(--bk-md);
+  font-weight: 400;
+  line-height: 1.25;
+}
+html.baker .bk-display__body > .bk-heading {
+  width: fit-content;
+  margin-top: 26px;
+  margin-bottom: 14px;
+  padding: 4px 18px 2px 26px;
+  background: var(--bk-paper);
+  box-shadow: var(--bk-shadow);
+}
+html.baker .bk-display__body > .bk-heading:first-child {
+  margin-top: 0;
+}
+
+/* ---------- A. recent activity: telegrams ---------- */
+
+html.baker .bk-telegrams {
+  display: grid;
+  gap: 10px;
+  max-width: 1000px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+html.baker .bk-telegram {
+  display: grid;
+  grid-template-columns: 84px minmax(0, 1fr) auto;
+  align-items: baseline;
+  gap: 16px;
+  padding: 10px 18px 8px;
+  color: var(--bk-ink);
+  text-decoration: none;
+  background: var(--bk-paper);
+  border-left: 6px solid var(--bk-gray);
+  box-shadow: var(--bk-shadow);
+  transition: transform 150ms ease-out;
+  animation: bk-arrive 260ms ease-out;
+}
+html.baker .bk-telegrams li:nth-child(odd) .bk-telegram {
+  margin-right: 14px;
+}
+html.baker .bk-telegrams li:nth-child(even) .bk-telegram {
+  margin-left: 14px;
+}
+html.baker .bk-telegram--red {
+  border-left-color: var(--bk-red);
+}
+html.baker .bk-telegram--yellow {
+  border-left-color: var(--bk-yellow);
+}
+html.baker .bk-telegram:hover,
+html.baker .bk-telegram:focus-visible {
+  transform: translateX(4px);
+}
+html.baker .bk-telegram__time {
+  font-family: var(--bk-type);
+  font-size: var(--bk-xs);
+  color: var(--bk-ink-3);
+}
+html.baker .bk-telegram__text b {
+  margin-right: 8px;
+  font-family: var(--bk-type);
+}
+html.baker .bk-telegram__text em {
+  color: var(--bk-ink-2);
+}
+@keyframes bk-arrive {
+  from {
+    opacity: 0;
+    transform: translateY(-8px);
+  }
+}
+
+/* ---------- B. accounts list: a ledger ---------- */
+
+html.baker .bk-ledger {
+  padding: 0;
+}
+html.baker .bk-ledger__tools {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 16px 22px 12px;
+  border-bottom: 3px double var(--bk-rule-strong);
+}
+html.baker .bk-select {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-family: var(--bk-type);
+  font-size: var(--bk-xs);
+}
+html.baker .bk-select select {
+  padding: 3px 6px 1px;
+  font: inherit;
+  color: var(--bk-ink);
+  background: var(--bk-paper);
+  border: 1px solid var(--bk-rule-strong);
+}
+html.baker .bk-ledger__scroll {
+  overflow-x: auto;
+}
+html.baker .bk-ledger__foot {
+  margin: 0;
+  padding: 10px 22px 14px;
+  font-family: var(--bk-type);
+  font-size: var(--bk-xs);
+  color: var(--bk-ink-3);
+}
+html.baker .bk-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: var(--bk-sm);
+}
+html.baker .bk-table th {
+  padding: 9px 12px 6px;
+  font-family: var(--bk-type);
+  font-size: var(--bk-xs);
+  font-weight: 700;
+  text-align: left;
+  color: var(--bk-ink-2);
+  white-space: nowrap;
+  border-bottom: 1px solid var(--bk-rule-strong);
+}
+html.baker .bk-table th.bk-num {
+  text-align: right;
+}
+html.baker .bk-table td {
+  padding: 7px 12px 5px;
+  vertical-align: middle;
+  border-bottom: 1px solid var(--bk-rule);
+}
+html.baker .bk-table th:first-child,
+html.baker .bk-table td:first-child {
+  padding-left: 22px;
+}
+html.baker .bk-table th:last-child,
+html.baker .bk-table td:last-child {
+  padding-right: 22px;
+}
+html.baker .bk-table td:first-child,
+html.baker .bk-table td a {
+  font-family: var(--bk-type);
+}
+html.baker .bk-ledger tbody tr {
+  cursor: pointer;
+  transition: background-color 120ms;
+}
+html.baker .bk-ledger tbody tr:hover,
+html.baker .bk-ledger tbody tr[aria-selected="true"] {
+  background: var(--hover);
+}
+html.baker .bk-ledger tbody tr[aria-selected="true"] {
+  box-shadow: inset 4px 0 0 var(--bk-brown);
+}
+html.baker .bk-signs {
+  color: var(--bk-ink-2);
+}
+html.baker .bk-you {
+  margin-left: 8px;
+  padding: 1px 5px 0;
+  font-family: var(--bk-type);
+  font-size: var(--bk-xs);
+  border: 1px solid var(--bk-ink-3);
+}
+html.baker .bk-score {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  font-family: var(--bk-type);
+}
+html.baker .bk-score b {
+  width: 4ch;
+  text-align: right;
+  font-variant-numeric: tabular-nums;
+}
+html.baker .bk-score__track {
+  width: 64px;
+  height: 6px;
+  background: var(--bk-rule);
+}
+html.baker .bk-score__track span {
+  display: block;
+  height: 100%;
+  background: var(--bk-ink-2);
+}
+
+/* The account dossier: a folder with a tab. */
+html.baker .bk-dossier {
+  position: relative;
+  padding: 12px 12px 14px;
+  margin-top: 30px;
+  background: var(--bk-beige);
+  box-shadow: var(--bk-shadow);
+}
+html.baker .bk-dossier__tab {
+  position: absolute;
+  left: 0;
+  top: -28px;
+  padding: 5px 26px 3px;
+  font-family: var(--bk-type);
+  font-size: var(--bk-xs);
+  font-weight: 700;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  background: var(--bk-beige-light);
+}
+
+/* Shared components inside paper: no second card look. */
+html.baker .bk-reuse section,
+html.baker .bk-reuse aside {
+  box-shadow: none;
+}
+html.baker .bk-reuse .radar-band::before,
+html.baker .bk-reuse .radar-band::after {
+  display: none;
+}
+/* The evaluation page has its own title row. The display already shows the title. */
+html.baker .bk-report {
+  padding: 0;
+}
+html.baker .bk-report > header > div:first-child {
+  display: none;
+}
+
+/* ---------- C. suspicious messages: clippings ---------- */
+
+html.baker .bk-clippings {
+  columns: 2 420px;
+  column-gap: 20px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+html.baker .bk-clipping {
+  break-inside: avoid;
+  margin: 0 0 18px;
+  background: var(--bk-paper);
+  border-top: 6px solid var(--bk-gray);
+  box-shadow: var(--bk-shadow);
+  /* The torn lower edge of a clipping. */
+  clip-path: polygon(0 0, 100% 0, 100% calc(100% - 5px), 96% 100%, 91% calc(100% - 4px), 84% 100%, 76% calc(100% - 5px), 68% 100%, 59% calc(100% - 3px), 50% 100%, 41% calc(100% - 5px), 33% 100%, 24% calc(100% - 4px), 16% 100%, 8% calc(100% - 5px), 0 100%);
+}
+html.baker .bk-clipping:nth-child(3n + 1) {
+  transform: rotate(-0.35deg);
+}
+html.baker .bk-clipping:nth-child(3n + 2) {
+  transform: rotate(0.3deg);
+}
+html.baker .bk-clipping--red {
+  border-top-color: var(--bk-red);
+}
+html.baker .bk-clipping--yellow {
+  border-top-color: var(--bk-yellow);
+}
+html.baker .bk-clipping__head {
+  display: block;
+  width: 100%;
+  padding: 12px 18px 16px;
+  font: inherit;
+  text-align: left;
+  color: inherit;
+  background: none;
+  border: 0;
+  cursor: pointer;
+}
+html.baker .bk-clipping__head:hover .bk-clipping__more {
+  color: var(--bk-ink);
+}
+html.baker .bk-clipping__meta {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px 12px;
+  margin-bottom: 8px;
+  font-size: var(--bk-sm);
+}
+html.baker .bk-clipping__meta span:last-child {
+  margin-left: auto;
+  font-family: var(--bk-type);
+  font-size: var(--bk-xs);
+  color: var(--bk-ink-3);
+}
+html.baker .bk-clipping__text {
+  display: block;
+  max-height: 320px;
+  overflow: auto;
+  font-family: var(--bk-type);
+  font-size: var(--bk-sm);
+  line-height: 1.45;
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+}
+html.baker .bk-clipping__more,
+html.baker .bk-clipping__link {
+  padding: 0;
+  background: none;
+  border: 0;
+  cursor: pointer;
+}
+html.baker .bk-clipping__link {
+  font-family: var(--bk-type);
+  font-size: var(--bk-xs);
+  color: var(--bk-brown);
+  text-decoration: underline;
+}
+html.baker .bk-clipping__more {
+  display: block;
+  margin-top: 8px;
+  font-family: var(--bk-type);
+  font-size: var(--bk-xs);
+  color: var(--bk-brown);
+  text-decoration: underline;
+}
+html.baker .bk-clipping__detail {
+  padding: 4px 18px 22px;
+  border-top: 1px dashed var(--bk-rule-strong);
+}
+html.baker .bk-clipping__detail h3,
+html.baker .bk-details h3 {
+  margin: 12px 0 4px;
+  font-family: var(--bk-type);
+  font-size: var(--bk-xs);
+  font-weight: 700;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--bk-ink-3);
+}
+html.baker .bk-clipping__detail ul {
+  margin: 0 0 12px;
+  padding: 0;
+  list-style: none;
+}
+html.baker .bk-clipping__accounts {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px 18px;
+}
+html.baker .bk-clipping__accounts li {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+html.baker .bk-clipping__accounts a {
+  font-family: var(--bk-type);
+  color: var(--bk-brown);
+}
+
+/* ---------- D. active metrics: index cards ---------- */
+
+html.baker .bk-indexes {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(230px, 1fr));
+  gap: 18px;
+  margin: 0;
+}
+html.baker .bk-index {
+  position: relative;
+  padding: 12px 16px 12px;
+  background:
+    linear-gradient(var(--bk-rule) 1px, transparent 1px) 0 38px / 100% 22px,
+    var(--bk-paper);
+  border-top: 5px solid var(--bk-brown-light);
+  box-shadow: var(--bk-shadow);
+}
+html.baker .bk-index:nth-child(odd) {
+  transform: rotate(-0.5deg);
+}
+html.baker .bk-index:nth-child(even) {
+  transform: rotate(0.4deg);
+}
+html.baker .bk-index--wide {
+  grid-column: span 2;
+}
+html.baker .bk-index dd {
+  white-space: nowrap;
+}
+html.baker .bk-index--red {
+  border-top-color: var(--bk-red);
+}
+html.baker .bk-index--yellow {
+  border-top-color: var(--bk-yellow);
+}
+html.baker .bk-index--gray {
+  border-top-color: var(--bk-gray);
+}
+html.baker .bk-index dt {
+  font-family: var(--bk-type);
+  font-size: var(--bk-xs);
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--bk-ink-2);
+}
+html.baker .bk-index dd {
+  margin: 4px 0 2px;
+  min-height: 1.3em;
+  font-family: var(--bk-type);
+  font-size: var(--bk-lg);
+  font-weight: 700;
+  line-height: 1.3;
+  font-variant-numeric: tabular-nums;
+}
+html.baker .bk-index--red dd {
+  color: var(--bk-red-deep);
+}
+html.baker .bk-index p {
+  margin: 0;
+  font-size: var(--bk-xs);
+  line-height: 1.4;
+  color: var(--bk-ink-2);
+}
+
+/* ---------- E. agent graph ---------- */
+
+html.baker .bk-graphdesk {
+  display: grid;
+  grid-template-columns: 290px minmax(0, 1fr) 320px;
+  gap: 20px;
+  height: min(70vh, 720px);
+  min-height: 420px;
+}
+html.baker .bk-campaigns,
+html.baker .bk-details {
+  overflow-y: auto;
+}
+html.baker .bk-campaigns {
+  transform: rotate(-0.4deg);
+}
+html.baker .bk-details {
+  transform: rotate(0.4deg);
+  font-size: var(--bk-sm);
+}
+html.baker .bk-details h3:first-child {
+  margin-top: 0;
+}
+html.baker .bk-details p {
+  margin: 0 0 8px;
+}
+html.baker .bk-campaigns ul,
+html.baker .bk-linklist {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+html.baker .bk-campaigns {
+  padding: 18px 0 8px;
+}
+html.baker .bk-campaigns .bk-heading,
+html.baker .bk-campaigns .bk-note {
+  padding: 0 20px;
+}
+html.baker .bk-campaign {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: 6px 12px;
+  align-items: center;
+  padding: 14px 20px 12px;
+  color: var(--bk-ink) !important;
+  line-height: 1.3;
+  text-decoration: none;
+  border-top: 1px solid var(--bk-rule);
+  transition: background-color 120ms;
+}
+html.baker .bk-campaign > .bk-typed {
+  font-size: var(--bk-sm);
+  font-weight: 700;
+}
+html.baker .bk-campaign > span:nth-child(n + 3) {
+  grid-column: 1 / -1;
+  font-family: var(--bk-type);
+  font-size: var(--bk-xs);
+  color: var(--bk-ink-2);
+}
+html.baker .bk-campaign--all {
+  font-family: var(--bk-type);
+  font-size: var(--bk-xs);
+  text-decoration: underline;
+  color: var(--bk-brown) !important;
+}
+html.baker .bk-campaign:hover {
+  background: var(--hover);
+}
+html.baker .bk-campaign[aria-current="true"] {
+  background: var(--hover);
+  box-shadow: inset 5px 0 0 var(--bk-brown);
+}
+/* The graph sits in a photograph frame. */
+html.baker .bk-photo {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+  padding: 14px 14px 10px;
+  background: var(--bk-paper);
+  box-shadow: var(--bk-shadow);
+}
+html.baker .bk-graph {
+  flex: 1;
+  min-height: 0;
+  width: 100%;
+  background: var(--bk-beige-light);
+  border: 1px solid var(--bk-rule-strong);
+}
+html.baker .bk-graph__ring {
+  fill: rgb(246 240 225 / 0.35);
+  stroke: var(--bk-rule-strong);
+  stroke-dasharray: 4 5;
+}
+html.baker .bk-graph__group {
+  font-family: var(--bk-type);
+  font-size: 15px;
+  font-weight: 700;
+  fill: var(--bk-ink-2);
+}
+html.baker .bk-graph__faded {
+  fill: none;
+  stroke: var(--bk-gray-deep);
+  stroke-width: 0.6;
+  opacity: 0.22;
+}
+html.baker .bk-graph__threads line {
+  stroke: var(--bk-red);
+  stroke-linecap: round;
+}
+html.baker .bk-graph__hit {
+  stroke: transparent;
+  stroke-width: 9;
+  cursor: pointer;
+}
+html.baker .bk-graph__hit:hover,
+html.baker .bk-graph__hit[data-picked] {
+  stroke: var(--bk-red-deep);
+  stroke-width: 3.5;
+}
+html.baker .bk-graph__node {
+  cursor: pointer;
+  outline-offset: 4px;
+  transition: opacity 200ms;
+}
+html.baker .bk-graph__node[data-picked] circle:first-of-type {
+  stroke-width: 3.2;
+}
+html.baker .bk-graph__label {
+  font-family: var(--bk-type);
+  font-size: 13px;
+  fill: var(--bk-ink);
+  paint-order: stroke;
+  stroke: var(--bk-beige-light);
+  stroke-width: 3.5px;
+}
+html.baker .bk-graph__label {
+  pointer-events: none;
+}
+html.baker .bk-graph__label[data-picked] {
+  font-size: 17px;
+  font-weight: 700;
+}
+html.baker .bk-legend {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px 18px;
+  margin: 8px 0 0;
+  padding: 0;
+  list-style: none;
+  font-family: var(--bk-type);
+  font-size: var(--bk-xs);
+}
+html.baker .bk-legend__thread {
+  display: inline-block;
+  width: 26px;
+  height: 3px;
+  vertical-align: 3px;
+  background: var(--bk-red);
+}
+html.baker .bk-facts {
+  margin: 0 0 12px;
+}
+html.baker .bk-facts div {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 3px 0;
+  border-bottom: 1px dotted var(--bk-rule-strong);
+}
+html.baker .bk-facts dt {
+  color: var(--bk-ink-2);
+}
+html.baker .bk-facts dt::first-letter {
+  text-transform: uppercase;
+}
+html.baker .bk-facts dd {
+  margin: 0;
+  font-family: var(--bk-type);
+  text-align: right;
+}
+html.baker .bk-linklist button {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: space-between;
+  gap: 2px 10px;
+  width: 100%;
+  padding: 4px 4px 2px;
+  font: inherit;
+  text-align: left;
+  color: var(--bk-ink);
+  background: none;
+  border: 0;
+  border-bottom: 1px solid var(--bk-rule);
+  cursor: pointer;
+}
+html.baker .bk-linklist button:hover {
+  background: var(--hover);
+}
+html.baker .bk-linklist button span:last-child {
+  font-size: var(--bk-xs);
+  color: var(--bk-ink-2);
+}
+html.baker .bk-papers {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 20px;
+  margin-top: 22px;
+}
+html.baker .bk-papers__wide {
+  grid-column: 1 / -1;
+}
+html.baker .bk-papers__scroll {
+  max-height: 420px;
+  overflow-y: auto;
+}
+html.baker .bk-papers .bk-table th:first-child,
+html.baker .bk-papers .bk-table td:first-child {
+  padding-left: 0;
+}
+html.baker .bk-pre {
+  margin: 0;
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+}
+
+/* ---------- small windows: a plain stacked list, no strings ---------- */
+
+@media (max-width: 900px), (max-height: 540px) {
+  html.baker .bk-root {
+    overflow: auto;
+  }
+  html.baker .bk-board {
+    position: static;
+    min-height: 100%;
+    padding: 8px;
+  }
+  html.baker .bk-board__cork {
+    display: flex;
+    flex-direction: column;
+    gap: 18px;
+    height: auto;
+    padding: 16px 14px 24px;
+  }
+  html.baker .bk-board__cork > * {
+    position: relative;
+    inset: auto;
+    left: auto;
+    top: auto;
+    width: auto;
+    height: auto;
+    transform: none;
+  }
+  html.baker .bk-plate {
+    align-self: center;
+    order: -2;
+    font-size: var(--bk-md);
+  }
+  html.baker .bk-center {
+    order: -1;
+    height: 380px;
+  }
+  html.baker .bk-strings,
+  html.baker .bk-card__pin,
+  html.baker .bk-card__frank {
+    display: none;
+  }
+  html.baker .bk-card {
+    --rot: 0deg;
+    min-height: 130px;
+  }
+  html.baker .bk-tags {
+    gap: 10px;
+  }
+  html.baker .bk-tag:nth-child(n) {
+    margin: 0;
+    transform: none;
+  }
+  html.baker .bk-search {
+    align-self: flex-start;
+  }
+  html.baker .bk-folder-prop {
+    margin-top: 12px;
+    min-height: 70px;
+  }
+  html.baker .bk-display {
+    padding: 12px 12px 32px;
+  }
+  html.baker .bk-graphdesk {
+    grid-template-columns: minmax(0, 1fr);
+    height: auto;
+  }
+  html.baker .bk-photo {
+    height: 420px;
+  }
+  html.baker .bk-papers {
+    grid-template-columns: minmax(0, 1fr);
+  }
+  html.baker .bk-telegram {
+    grid-template-columns: minmax(0, 1fr);
+    gap: 4px;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  html.baker .bk-board[data-away] {
+    transform: none;
+  }
+}
+
+/* Buttons of shared components that sit on the dark desk: paper, like the Back button. */
+html.baker .bk-display__actions .bk-reuse [data-slot="button"] {
+  color: var(--bk-ink);
+  background: var(--bk-paper);
+  border: 1px solid var(--bk-ink-3);
+  box-shadow: var(--bk-shadow);
+}
+
+/* The search field has its own frame; a second outline is not necessary. */
+html.baker [cmdk-input]:focus-visible {
+  outline: none;
+}
+
+html.baker .bk-ledger .bk-note {
+  padding: 14px 22px;
+}
+
+/* ---------- perforated edges: a row of small holes, like a sheet torn from a pad ---------- */
+
+html.baker .bk-perf-left,
+html.baker .bk-perf-top {
+  --bk-hole: var(--bk-oak-deep);
+}
+html.baker .bk-board .bk-perf-left,
+html.baker .bk-board .bk-perf-top {
+  --bk-hole: var(--bk-beige-deep);
+}
+html.baker .bk-perf-left {
+  background-image: radial-gradient(circle at 10px 7px, var(--bk-hole) 0 2.6px, transparent 3.2px);
+  background-size: 20px 14px;
+  background-repeat: repeat-y;
+}
+html.baker .bk-perf-top {
+  background-image: radial-gradient(circle at 7px 9px, var(--bk-hole) 0 2.6px, transparent 3.2px);
+  background-size: 14px 18px;
+  background-repeat: repeat-x;
+}
+
+/* ---------- the "i" button and its note ---------- */
+
+html.baker .bk-info {
+  position: absolute;
+  z-index: 2;
+  width: 24px;
+  height: 24px;
+  padding: 0;
+  font-family: var(--bk-serif);
+  font-size: var(--bk-sm);
+  line-height: 22px;
+  text-align: center;
+  color: var(--bk-ink);
+  background: var(--bk-paper);
+  border: 1px solid var(--bk-ink-3);
+  cursor: pointer;
+  transition: background-color 150ms;
+}
+html.baker .bk-info:hover,
+html.baker .bk-info[data-state="open"] {
+  color: var(--bk-paper);
+  background: var(--bk-ink-2);
+}
+html.baker .bk-card .bk-info {
+  right: calc(var(--bk-xs) * 6.6);
+  bottom: calc(var(--bk-xs) * 0.75);
+}
+html.baker .bk-board .bk-info {
+  width: calc(var(--bk-xs) * 1.8);
+  height: calc(var(--bk-xs) * 1.8);
+  font-size: var(--bk-xs);
+  line-height: calc(var(--bk-xs) * 1.65);
+}
+html.baker .bk-sheet .bk-info {
+  position: static;
+  flex: none;
+  align-self: center;
+  margin-right: auto;
+  margin-left: 4px;
+}
+html.baker .bk-info-note {
+  z-index: 60;
+  width: min(340px, 86vw);
+  padding: 14px 18px 12px;
+  color: var(--bk-ink);
+  background: var(--bk-paper);
+  border: 1px solid var(--bk-ink-3);
+  box-shadow: var(--bk-shadow-lift);
+  animation: bk-arrive 160ms ease-out;
+}
+html.baker .bk-info-note h3 {
+  margin: 0 0 4px;
+  font-size: var(--bk-md);
+  font-weight: 400;
+  line-height: 1.2;
+}
+html.baker .bk-info-note p {
+  margin: 0 0 6px;
+  font-size: var(--bk-sm);
+  line-height: 1.4;
+}
+
+/* The postcard is a box with a link inside, so the "i" button can sit on it. */
+html.baker .bk-card__link {
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+  min-height: 0;
+  color: inherit;
+  text-decoration: none;
+  outline-offset: 8px;
+}
+html.baker .bk-card:focus-within {
+  transform: rotate(var(--rot)) translateY(-4px) scale(1.015);
+  box-shadow: var(--bk-shadow-lift);
+}
+
+/* ---------- agent graph: the pointer over an account ---------- */
+
+html.baker .bk-graph__pin {
+  transition: transform 140ms ease-out;
+}
+html.baker .bk-graph__node[data-hot] .bk-graph__pin {
+  transform: scale(1.5);
+}
+html.baker .bk-graph__hot {
+  stroke: var(--bk-red-deep);
+  stroke-width: 2.6;
+  stroke-linecap: round;
+  pointer-events: none;
+}
+html.baker .bk-graphwrap {
+  position: relative;
+  display: flex;
+  flex: 1;
+  min-height: 0;
+}
+/* The label of the account under the pointer. */
+html.baker .bk-graph-tip {
+  position: absolute;
+  z-index: 2;
+  margin: 0;
+  padding: 6px 12px 5px;
+  font-family: var(--bk-type);
+  font-size: var(--bk-xs);
+  line-height: 1.4;
+  white-space: nowrap;
+  color: var(--bk-ink);
+  background: var(--bk-paper);
+  border: 1px solid var(--bk-ink-3);
+  box-shadow: var(--bk-shadow);
+  transform: translate(-50%, calc(-100% - 10px));
+  pointer-events: none;
+}
+html.baker .bk-graph-tip b,
+html.baker .bk-graph-tip span {
+  display: block;
+}
+html.baker .bk-graph-tip span {
+  color: var(--bk-ink-3);
+}
+/* The display takes the focus when it opens, for the keyboard. It needs no outline. */
+html.baker .bk-layer:focus {
+  outline: none;
+}
+
+html.baker .bk-sheet__pin--left {
+  left: 18px;
+}
+html.baker .bk-sheet__pin--right {
+  right: 18px;
+}
+html.baker .bk-status.bk-perf-left {
+  padding-left: 28px;
+}
+/* Bold in running text is the semi-bold of the book type. Numbers have one height. */
+html.baker b,
+html.baker strong,
+html.baker .font-semibold,
+html.baker .font-medium {
+  font-weight: 600;
+}
+html.baker body {
+  font-variant-numeric: lining-nums;
+}
+/* The "i" note is small text of this design already: it is not enlarged like the shared dialogs. */
+html.baker .bk-info-note[role="dialog"] {
+  zoom: 1;
+}
+
+/* ---------- shared components inside Baker Street: the same look as the rest ---------- */
+
+/* The state pill of the shared components becomes the rubber stamp. */
+html.baker [data-state-badge] {
+  height: auto;
+  padding: 2px 6px 0;
+  border: 1.5px solid;
+  font-family: var(--bk-type);
+  font-size: 11.5px;
+  font-weight: 700;
+  line-height: 1.3;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  background: none;
+  transform: rotate(-1.5deg);
+}
+html.baker [data-state-badge="red"] {
+  color: var(--bk-red-deep);
+  border-color: var(--bk-red);
+}
+html.baker [data-state-badge="yellow"] {
+  color: var(--bk-ink);
+  background: var(--bk-yellow);
+  border-color: var(--bk-yellow-deep);
+}
+html.baker [data-state-badge="gray"] {
+  color: var(--bk-gray-deep);
+  border-color: var(--bk-gray);
+}
+/* Their headings use the book type at the heading size, like all other headings. */
+html.baker .bk-reuse h2,
+html.baker [role="dialog"] h2 {
+  font-family: var(--bk-serif);
+  font-size: 19px;
+  font-weight: 400;
+  letter-spacing: 0;
+}
+html.baker .bk-reuse h1 {
+  font-weight: 700;
+  letter-spacing: 0;
+}
+html.baker .bk-reuse .display {
+  font-family: var(--bk-type);
+  font-weight: 700;
+  letter-spacing: 0;
+}
+/* Their panels are sheets with a thin ink line, not floating cards. */
+html.baker .bk-reuse section {
+  border-color: var(--bk-rule-strong);
+}
+
+/* The graph fills its frame and never makes the frame taller. */
+html.baker .bk-graphwrap .bk-graph {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+}

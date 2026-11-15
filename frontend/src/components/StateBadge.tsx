@@ -11,6 +11,8 @@ export function StateBadge({ state, className }: { state: string | null | undefi
   return (
     <span
       title={meta.meaning}
+      // Baker Street draws this as a rubber stamp. The tone is its signal color.
+      data-state-badge={state === "block" ? "red" : state === "review" ? "yellow" : "gray"}
       className={cn(
         "inline-flex h-[22px] items-center rounded-[5px] px-2 text-[12px] font-medium whitespace-nowrap",
         meta.badge,

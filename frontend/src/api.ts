@@ -33,6 +33,8 @@ export interface AccountRow {
   pseudonym: string;
   you: boolean;
   score: number | null;
+  /** The level from the rules score (repeated contexts): "normal", "review", "block", or null before 30 requests. */
+  rules_level?: string | null;
   state: AccountState;
   requests: number;
   campaign_id: string | null;
