@@ -8,7 +8,7 @@ import { PageBody, PageHeader } from "@/components/PageHeader";
 import { Panel, PanelHeader } from "@/components/Panel";
 import { Button } from "@/components/ui/button";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { formatNumber, formatSimDateTime } from "@/lib/format";
+import { formatNumber, formatPercent, formatSimDateTime } from "@/lib/format";
 import { hasDashboard, watchdogSite, type GeneratorKind, type Role } from "@/lib/origin";
 import { routeHref } from "@/lib/router";
 import { cn } from "@/lib/utils";
@@ -32,13 +32,28 @@ function persona(name: string) {
   return PERSONAS[name] ?? { name, does: "" };
 }
 
+/** Leaked sessions as a share of the sessions that can leak. Null when the generator has not reported the total. */
+function leakShare(leaked: number, planned: number | null | undefined): number | null {
+  return typeof planned === "number" && planned > 0 ? leaked / planned : null;
+}
+
+/** One decimal place, but a share above zero never reads as "0.0%". */
+function formatLeakShare(share: number): string {
+  return share > 0 && share < 0.0005 ? "<0.1%" : formatPercent(share);
+}
+
 function totals(personas: Record<string, PersonaCounters>) {
   const all = Object.values(personas);
+  // The leak rate of the page covers the personas that have sent requests. A persona that never started has
+  // leaked nothing, and its planned sessions would only make the rate look better than it is.
+  const started = all.filter((c) => c.sent > 0);
+  const plannedKnown = started.length > 0 && started.every((c) => leakShare(c.leaked, c.sessions_planned) !== null);
   return {
     sent: all.reduce((sum, c) => sum + c.sent, 0),
     served: all.reduce((sum, c) => sum + c.served, 0),
     blocked: all.reduce((sum, c) => sum + c.blocked, 0),
     leaked: all.reduce((sum, c) => sum + c.leaked, 0),
+    planned: plannedKnown ? started.reduce((sum, c) => sum + (c.sessions_planned ?? 0), 0) : null,
   };
 }
 
@@ -62,7 +77,11 @@ function Overview({ kind, status }: { kind: GeneratorKind; status: GeneratorStat
   else {
     rest = `The gateway served ${formatNumber(sum.served)} of ${formatNumber(sum.sent)} requests and refused ${formatNumber(sum.blocked)}.`;
     if (kind === "attack" && sum.leaked > 0) {
-      rest += ` Before the blocks, ${formatNumber(sum.leaked)} complete ${sum.leaked === 1 ? "session" : "sessions"} got through.`;
+      const share = leakShare(sum.leaked, sum.planned);
+      rest +=
+        share === null
+          ? ` Before the blocks, ${formatNumber(sum.leaked)} complete ${sum.leaked === 1 ? "session" : "sessions"} got through.`
+          : ` Before the blocks, ${formatLeakShare(share)} of the complete sessions got through (${formatNumber(sum.leaked)} of ${formatNumber(sum.planned)}).`;
     }
   }
 
@@ -103,6 +122,7 @@ function PersonaRow({
 }) {
   const meta = persona(name);
   const share = counters.sent > 0 ? counters.blocked / counters.sent : 0;
+  const leak = leakShare(counters.leaked, counters.sessions_planned);
   return (
     <li className="grid gap-x-6 gap-y-4 px-5 py-4 lg:grid-cols-[minmax(0,1.4fr)_minmax(0,2fr)_auto] lg:items-center">
       <div className="min-w-0">
@@ -141,7 +161,17 @@ function PersonaRow({
             <div className="risk-fill h-full rounded-full" style={{ width: `${share * 100}%` }} />
           </div>
         </div>
-        <Count label="Leaked" value={counters.leaked} />
+        {leak === null ? (
+          <Count label="Leaked" value={counters.leaked} />
+        ) : (
+          <div className="min-w-0">
+            <div className="text-[11.5px] text-ink-3">Leaked</div>
+            <div className="font-mono text-[14px] tabular-nums">{formatLeakShare(leak)}</div>
+            <div className="mt-0.5 font-mono text-[11.5px] text-ink-3 tabular-nums">
+              {formatNumber(counters.leaked)} of {formatNumber(counters.sessions_planned)}
+            </div>
+          </div>
+        )}
       </div>
 
       <Button
@@ -247,8 +277,8 @@ export function Traffic({ kind, role }: { kind: GeneratorKind; role: Role }) {
         <HelpNote open={helpOpen} onClose={toggleHelp}>
           Each row is one persona: a kind of {kind === "attack" ? "distillation attack" : "normal customer"}. Start
           sends its requests to the lab at the scale and speed above; speed is simulated seconds per real second.
-          Blocked counts refused requests, not accounts. Leaked counts complete sessions that a persona received before
-          its accounts were blocked. For the state of each account, see the{" "}
+          Blocked counts refused requests, not accounts. Leaked is the share of a persona's complete sessions that
+          it received before its accounts were blocked, with the count below it. For the state of each account, see the{" "}
           <a href={dashboardHref} className="text-brand-ink underline-offset-2 hover:underline">
             dashboard
           </a>

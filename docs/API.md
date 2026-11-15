@@ -108,11 +108,13 @@ Returns `static/panel.html`.
 
 ```json
 {"role": "attack", "scale": "demo", "speed": 600, "sim_time": 1767574800.0,
- "personas": {"hydra": {"running": true, "accounts": 60, "sent": 5120, "served": 4300,
+ "personas": {"hydra": {"running": true, "accounts": 60, "sessions_planned": 1480, "sent": 5120, "served": 4300,
                          "blocked": 820, "leaked": 37}}}
 ```
 
 `leaked` is the number of complete trajectories (sessions that reached the model stop) that the persona received before its accounts were blocked.
+
+`sessions_planned` is the number of trajectories of the persona that can leak: the sessions of its scenario that end at a model stop. The leak rate is `leaked / sessions_planned`. It is `null` until the generator has built the scenario of the scale, which happens at the first start.
 
 ### `POST /api/start`
 

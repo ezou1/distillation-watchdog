@@ -13,7 +13,7 @@ from dw.common.chat import schema_id_of, split_steps, to_openai
 from dw.common.config import CFG
 from dw.common.schema import Message, Session
 from dw.sim.personas import ALL_PERSONAS, base_personas, make_personas
-from dw.sim.scenario import Scenario, build_scenario, oa_offsets
+from dw.sim.scenario import Scenario, build_scenario, oa_offsets, planned_sessions
 
 FIX = Path(__file__).parent / "fixtures" / "canonical_small"
 ORIGIN = float(CFG["sim"]["epoch_start"])
@@ -235,6 +235,22 @@ def test_final_flag(holdout: Scenario) -> None:
         last[r.session_ref] = r
     finals = [r for r in holdout.requests if r.final]
     assert finals and all(last[r.session_ref].body is r.body for r in finals)
+
+
+def test_planned_sessions_counts_each_session_that_can_leak_once(holdout: Scenario) -> None:
+    planned = planned_sessions(holdout.requests)
+    finals: dict[str, set[str]] = defaultdict(set)
+    for r in holdout.requests:
+        if r.final:
+            finals[r.persona].add(r.session_ref)
+    assert planned == {p: len(refs) for p, refs in finals.items()}
+    assert set(planned) == set(ALL_PERSONAS) and all(n > 0 for n in planned.values())
+    # Best-of-n sends a final step several times. The session still counts once.
+    copies = sum(1 for r in holdout.requests if r.final and r.persona == "hydra")
+    assert copies > planned["hydra"]
+    # No session has more planned sessions than sessions.
+    for p, n in planned.items():
+        assert n <= len({r.session_ref for r in holdout.requests if r.persona == p})
 
 
 def test_deterministic_and_persona_subset_stable() -> None:

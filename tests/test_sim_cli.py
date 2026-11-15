@@ -98,6 +98,32 @@ def test_panel_api() -> None:
     asyncio.run(go())
 
 
+def test_status_reports_planned_sessions_once_the_scenario_is_built() -> None:
+    async def go() -> None:
+        gen = _gen(FakeLab(), "attack")
+        try:
+            before = gen.status()["personas"]
+            assert {c["sessions_planned"] for c in before.values()} == {None}
+            sc = await gen.scenario("small")
+            after = gen.status()["personas"]
+            for persona in ("hydra", "fake_env", "stealth"):
+                finals = {r.session_ref for r in sc.requests if r.persona == persona and r.final}
+                assert after[persona]["sessions_planned"] == len(finals) > 0
+                assert after[persona]["leaked"] == 0
+        finally:
+            await gen.close()
+    asyncio.run(go())
+
+
+def test_leak_text() -> None:
+    assert cli.leak_text(12, 480) == "2.5% (12 of 480)"
+    assert cli.leak_text(0, 480) == "0.0% (0 of 480)"
+    assert cli.leak_text(480, 480) == "100.0% (480 of 480)"
+    assert cli.leak_text(1, 50_000) == "<0.1% (1 of 50000)"
+    # Without the total there is no rate: before the scenario is built, or for a persona with no session that can leak.
+    assert cli.leak_text(7, None) == "7" and cli.leak_text(0, 0) == "0"
+
+
 def test_render_has_menu() -> None:
     async def go() -> None:
         gen = _gen(FakeLab(), "attack")

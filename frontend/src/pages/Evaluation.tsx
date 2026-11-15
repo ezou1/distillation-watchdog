@@ -275,7 +275,9 @@ function TimeToBlock({ metrics }: { metrics: unknown }) {
             columns={[{ label: "Persona" }, ...leakageColumns.map((key) => ({ label: humanizeKey(key), align: "right" as const }))]}
             rows={Object.entries(leakage).map(([key, value]) => [
               personaLabel(key),
-              ...leakageColumns.map((column) => formatNumber(num(dict(value)?.[column]))),
+              ...leakageColumns.map((column) =>
+                (column.endsWith("_share") ? formatPercent : formatNumber)(num(dict(value)?.[column])),
+              ),
             ])}
           />
           {typeof leakageNote === "string" && <Note>{leakageNote}</Note>}

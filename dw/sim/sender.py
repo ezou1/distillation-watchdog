@@ -35,12 +35,22 @@ class Counters:
         self.by_persona: dict[str, PersonaCounts] = defaultdict(PersonaCounts)
         self._leaked: set[str] = set()
         self._stopped: set[str] = set()
+        self._sent: set[int] = set()
 
     def skip(self, r: SimRequest) -> bool:
         return r.session_ref in self._stopped
 
     def sent(self, r: SimRequest) -> None:
         self.by_persona[r.persona].sent += 1
+        self._sent.add(id(r))
+
+    def was_sent(self, r: SimRequest) -> bool:
+        """True if this request object went out already. A resumed persona leaves these requests out.
+
+        The key is the object, not its content: best-of-n copies have equal content and each must go out once.
+        The generator keeps one scenario per scale for its whole life, so the objects do not change.
+        """
+        return id(r) in self._sent
 
     def record(self, r: SimRequest, status: int) -> None:
         c = self.by_persona[r.persona]

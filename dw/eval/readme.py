@@ -53,6 +53,21 @@ def _realism_rows(fe: dict[str, Any]) -> list[str]:
     return out
 
 
+def _leakage_table(by_persona: dict[str, dict[str, Any]]) -> str:
+    """Leaked trajectories per persona as a share of the planned ones.
+
+    A report from before the leak rate has only the served and the tried final steps. It keeps its old table,
+    because "tried" is not the planned total and a percentage of it would mislead.
+    """
+    rows = sorted(by_persona.items())
+    if rows and all("planned_trajectories" in v for _, v in rows):
+        return _table(["Persona", "Leaked", "Complete trajectories leaked", "Complete trajectories planned"],
+                      [[TITLES.get(p, p), f"{100 * v['leaked_share']:.1f}%", v["leaked_trajectories"],
+                        v["planned_trajectories"]] for p, v in rows])
+    return _table(["Persona", "Complete trajectories served", "Complete trajectories tried"],
+                  [[TITLES.get(p, p), v["served_trajectories"], v["possible_trajectories"]] for p, v in rows])
+
+
 def results(m: dict[str, Any], compute: dict[str, Any], load: dict[str, Any], cost: dict[str, Any]) -> str:
     sc, roc, pr = m["scenario"], m["account_roc"], m["per_request_vs_per_account"]
     parts = [
@@ -95,9 +110,7 @@ def results(m: dict[str, Any], compute: dict[str, Any], load: dict[str, Any], co
                [[TITLES[p], v["accounts"], v["blocked"], v["median_requests_to_block"], v["median_sim_minutes_to_block"]]
                 for p, v in m["time_to_block"]["per_persona"].items()]),
         "",
-        _table(["Persona", "Complete trajectories served", "Complete trajectories tried"],
-               [[TITLES.get(p, p), v["served_trajectories"], v["possible_trajectories"]]
-                for p, v in sorted(m["time_to_block"]["leakage"]["by_persona"].items())]),
+        _leakage_table(m["time_to_block"]["leakage"]["by_persona"]),
         "",
         f"Campaign effect on stealth: account-level recall {_f(m['campaign_effect']['stealth_recall_account_level'])}, "
         f"recall after campaigns {_f(m['campaign_effect']['stealth_recall_after_campaigns'])}, "

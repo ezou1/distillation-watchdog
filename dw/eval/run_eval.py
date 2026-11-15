@@ -119,24 +119,38 @@ def time_to_block(scen: Scenario, result: OfflineResult, worker: Worker) -> dict
         summary[persona] = {"accounts": len(items), "blocked": sum(i["blocked"] for i in items),
                             "median_requests_to_block": float(np.median(reqs)) if reqs else None,
                             "median_sim_minutes_to_block": round(float(np.median(mins)), 1) if mins else None}
-    leaked = leakage_by_campaign(result, worker)
+    leaked = leakage_by_campaign(scen, result, worker)
     return {"per_persona": summary, "leakage": leaked}
 
 
-def leakage_by_campaign(result: OfflineResult, worker: Worker) -> dict[str, Any]:
-    """Complete trajectories (final step served) per campaign and per persona, with the total possible."""
-    by_camp: dict[str, dict[str, int]] = defaultdict(lambda: {"served_trajectories": 0, "possible_trajectories": 0})
-    by_persona: dict[str, dict[str, int]] = defaultdict(lambda: {"served_trajectories": 0, "possible_trajectories": 0})
-    for r in result.requests:
-        if not r.get("final"):
-            continue
-        acct = worker.accounts.get(r["account"])
+def leakage_by_campaign(scen: Scenario, result: OfflineResult, worker: Worker) -> dict[str, Any]:
+    """Leaked trajectories per campaign and per persona, as a count and as a share of the planned ones.
+
+    Planned: the sessions of the scenario that end at a model stop. The sender tried some of them only in part,
+    because a session stops at its first refusal. Leaked: the planned sessions whose final step the lab served.
+    Each session counts once, also when its final step was sent as several copies.
+    """
+    planned: dict[str, tuple[str, str]] = {}         # session -> (persona, account)
+    for r in scen.requests:
+        if r.final:
+            planned[r.session_ref] = (r.persona, r.key)
+    leaked = {r["session"] for r in result.requests if r.get("final") and r["status"] == 200}
+
+    def bucket() -> dict[str, Any]:
+        return {"leaked_trajectories": 0, "planned_trajectories": 0}
+    by_camp: dict[str, dict[str, Any]] = defaultdict(bucket)
+    by_persona: dict[str, dict[str, Any]] = defaultdict(bucket)
+    for session, (persona, account) in planned.items():
+        acct = worker.accounts.get(account)
         camp = (acct.campaign_id if acct else None) or "none"
-        for bucket in (by_camp[camp], by_persona[r["persona"]]):
-            bucket["possible_trajectories"] += 1
-            bucket["served_trajectories"] += int(r["status"] == 200)
+        for b in (by_camp[camp], by_persona[persona]):
+            b["planned_trajectories"] += 1
+            b["leaked_trajectories"] += int(session in leaked)
+    for b in (*by_camp.values(), *by_persona.values()):
+        b["leaked_share"] = round(b["leaked_trajectories"] / b["planned_trajectories"], 4)
     return {"by_campaign": dict(by_camp), "by_persona": dict(by_persona),
-            "note": "possible_trajectories counts final steps the sender tried; a blocked session stops earlier, so this undercounts what the attacker wanted."}
+            "note": "leaked_share is leaked_trajectories divided by planned_trajectories. planned_trajectories counts "
+                    "every session of the scenario that ends at a model stop, also the sessions that a block cut short."}
 
 
 def per_request_vs_account(scen: Scenario, worker: Worker, rows: list[dict[str, Any]]) -> dict[str, Any]:
