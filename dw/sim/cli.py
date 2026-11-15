@@ -197,12 +197,12 @@ def render(gen: Generator) -> RenderableType:
     def outcome(c: dict[str, Any], key: str) -> Any:
         return c["outcome"][key] if c["outcome"] else "-"
     rows = [(TITLES[p], c["state"], c["accounts"], outcome(c, "block"), outcome(c, "review"), outcome(c, "clear"),
-             c["sent"], c["served"], c["blocked"], leak_text(c["leaked"], c["sessions_planned"]), c["errors"])
+             c["sent"], c["served"], leak_text(c["leaked"], c["sessions_planned"]), c["errors"])
             for p, c in st["personas"].items()]
     when = datetime.fromtimestamp(st["sim_time"], timezone.utc).strftime("%Y-%m-%d %H:%M") if st["sim_time"] else "-"
     table = term.rows_table(f"sim time {when} UTC  scale {gen.scale}  speed {gen.speed:g}",
                             ["persona", "state", "accounts", "acct blocked", "acct review", "acct not flagged",
-                             "req sent", "req served", "req refused", "leaked", "errors"], rows)
+                             "req sent", "req served", "completed", "errors"], rows)
     return term.panel(f"{gen.role} traffic generator", table,
                       Text(f"Type a number and Enter to start or stop: {menu}   q = quit"),
                       Text(st["error"], style="red"))
